@@ -51,7 +51,7 @@ const createBoutiqueWithContract = async (data) => {
   const hashedToken = await bcrypt.hash(rawToken, 10);
 
   user.activationTokenHash = hashedToken;
-  user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24h
+  user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
   await user.save();
 
   const activationLink = `${process.env.FRONTEND_URL}/activate-account?token=${rawToken}&id=${user._id}`;
