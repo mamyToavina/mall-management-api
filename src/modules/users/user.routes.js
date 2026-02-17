@@ -1,5 +1,5 @@
 const express = require('express')
-const { protect } = require('../../middlewares/auth.middleware');
+//const { protect } = require('../../middlewares/auth.middleware');
 
 const {
   getAllUsers,
@@ -22,8 +22,8 @@ const uploadUserProfil = createImageUploader({
 const router = express.Router()
 router.post('/registerUser', uploadUserProfil, registerUser)
 
-router.use(auth, role('ADMIN'))
-router.use(protect)
+//router.use(auth, role('ADMIN'))
+//router.use(protect)
 router.get('/', getAllUsers)
 router.get('/:id', getUserById)
 router.patch('/:id/block', blockUser)
