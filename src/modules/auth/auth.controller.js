@@ -3,6 +3,7 @@ const { loginService, completeBoutiqueProfileService } = require('./auth.service
 const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 
 const login = async (req, res, next) => {
   try {
@@ -69,9 +70,17 @@ const logout = async (req, res) => {
 
 const completeBoutiqueProfile = async (req, res, next) => {
   try {
-    const result = await completeBoutiqueProfileService(req.body);
+    const payload = {
+      ...req.body,
+      logo: req.file ? `/uploads/boutiques/${req.file.filename}` : req.body.logo
+    };
+
+    const result = await completeBoutiqueProfileService(payload);
     res.status(200).json(result);
   } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     next(err);
   }
 };
