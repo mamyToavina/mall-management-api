@@ -1,0 +1,315 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mall Management API",
+    "version": "1.0.0",
+    "description": "Auto-generated endpoint index. Complete docs are in /docs/api."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/admin/create-tenant": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "POST /api/admin/create-tenant",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/auth/complete-boutique-profile": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/complete-boutique-profile",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/login",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/logout",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/refresh",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/admin/electricity-invoices/upload": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "POST /api/billing/admin/electricity-invoices/upload",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/boutique/invoices": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/boutique/invoices",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/boutique/invoices/:id": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/boutique/invoices/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/boutique/summary": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/boutique/summary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boxes/": {
+      "get": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "GET /api/boxes/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "POST /api/boxes/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boxes/:id": {
+      "delete": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "DELETE /api/boxes/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "PUT /api/boxes/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boxes/:id/full-details": {
+      "get": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "GET /api/boxes/:id/full-details",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boxes/statistics": {
+      "get": {
+        "tags": [
+          "boxes"
+        ],
+        "summary": "GET /api/boxes/statistics",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "GET /api/products/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "products"
+        ],
+        "summary": "POST /api/products/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/:id": {
+      "delete": {
+        "tags": [
+          "products"
+        ],
+        "summary": "DELETE /api/products/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "GET /api/products/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "products"
+        ],
+        "summary": "PATCH /api/products/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/:id/promotion": {
+      "delete": {
+        "tags": [
+          "products"
+        ],
+        "summary": "DELETE /api/products/:id/promotion",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "products"
+        ],
+        "summary": "PATCH /api/products/:id/promotion",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/:id/stock": {
+      "patch": {
+        "tags": [
+          "products"
+        ],
+        "summary": "PATCH /api/products/:id/stock",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/:id/stock-movements": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "GET /api/products/:id/stock-movements",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  }
+}
