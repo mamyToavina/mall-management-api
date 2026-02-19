@@ -1,14 +1,24 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: Number(process.env.MAIL_PORT),
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS
-  }
-});
+const parseBoolean = (value, defaultValue = false) => {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  return String(value).toLowerCase() === 'true';
+};
+
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.MAIL_HOST,
+    port: Number(process.env.MAIL_PORT),
+    secure: parseBoolean(process.env.MAIL_SECURE, false),
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS
+    },
+    tls: {
+      rejectUnauthorized: parseBoolean(process.env.MAIL_TLS_REJECT_UNAUTHORIZED, true)
+    }
+  });
+};
 
 const sendActivationEmail = async (to, activationLink, firstName) => {
   const html = `
@@ -27,6 +37,8 @@ const sendActivationEmail = async (to, activationLink, firstName) => {
       <small>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</small>
     </div>
   `;
+
+  const transporter = createTransporter();
 
   await transporter.sendMail({
     from: process.env.MAIL_FROM,

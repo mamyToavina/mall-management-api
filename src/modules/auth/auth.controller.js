@@ -1,5 +1,5 @@
 const User = require('../users/user.model');
-const { loginService } = require('./auth.service');
+const { loginService, completeBoutiqueProfileService } = require('./auth.service');
 const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -67,6 +67,14 @@ const logout = async (req, res) => {
   res.json({ message: "Déconnecté" })
 }
 
+const completeBoutiqueProfile = async (req, res, next) => {
+  try {
+    const result = await completeBoutiqueProfileService(req.body);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
 
-module.exports = { login, refresh, logout };
+module.exports = { login, refresh, logout, completeBoutiqueProfile };
 

@@ -50,7 +50,6 @@ contractSchema.pre('save', function(next) {
   if (this.endDate <= this.startDate) {
     return next(new Error("End date must be after start date"));
   }
-  next();
 });
 
 module.exports = mongoose.model('Contract', contractSchema);
