@@ -18,7 +18,9 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
+// Increase body size limits to avoid PayloadTooLargeError when frontend sends large JSON payloads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(cookieParser());
 

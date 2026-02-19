@@ -59,9 +59,27 @@ const createBoutiqueWithContract = async (data) => {
       box.boutique = boutique._id;
       await box.save({ session });
 
+      const contractStartDate = new Date(contractData.startDate);
+      if (Number.isNaN(contractStartDate.getTime())) {
+        throw new Error('contractData.startDate invalide');
+      }
+
+      const contractDurationMonths = Number(contractData.durationMonths);
+      if (Number.isNaN(contractDurationMonths) || contractDurationMonths <= 0) {
+        throw new Error('contractData.durationMonths invalide');
+      }
+
+      const computedEndDate = new Date(contractStartDate);
+      computedEndDate.setMonth(computedEndDate.getMonth() + contractDurationMonths);
+
       const contract = new Contract({
-        ...contractData,
-        boutique: boutique._id
+        boutique: boutique._id,
+        startDate: contractStartDate,
+        endDate: computedEndDate,
+        durationMonths: contractDurationMonths,
+        monthlyRent: contractData.monthlyRent,
+        details: contractData.details,
+        status: contractData.status || 'ACTIVE'
       });
       await contract.save({ session });
 

@@ -1,6 +1,6 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-19T16:49:42.410Z`
+Generated at: `2026-02-19T21:02:48.761Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
