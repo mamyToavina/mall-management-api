@@ -1,11 +1,11 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const User = require('../users/user.model');
 const Boutique = require('../boutique/boutique.model');
 const Box = require('../boxes/box.model');
 const Contract = require('../contracts/contract.model');
 const { sendActivationEmail } = require('../../utils/mailer');
-
 
 const createBoutiqueWithContract = async (data) => {
   const {
@@ -16,54 +16,84 @@ const createBoutiqueWithContract = async (data) => {
     contractData
   } = data;
 
-  const box = await Box.findById(boxId);
-  if (!box) throw new Error("Box introuvable");
-  if (box.boutique) throw new Error("Box déjà occupée");
+  const hasMailConfig = process.env.MAIL_HOST
+    && process.env.MAIL_PORT
+    && process.env.MAIL_USER
+    && process.env.MAIL_PASS
+    && process.env.MAIL_FROM;
 
-  const tempPassword = crypto.randomBytes(6).toString('hex');
+  if (!hasMailConfig) {
+    throw new Error('Configuration mail incomplete: MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, MAIL_FROM requis');
+  }
 
-  const user = await User.create({
-    firstName,
-    lastName,
-    email,
-    password: tempPassword,
-    role: 'BOUTIQUE',
-    status: 'BLOCKED',
-    isAccountCompleted: false
-  });
+  const session = await mongoose.startSession();
+  let response = null;
 
-  const boutique = await Boutique.create({
-    name: `${firstName} ${lastName} Boutique`,
-    owner: user._id,
-    box: box._id
-  });
+  try {
+    await session.withTransaction(async () => {
+      const box = await Box.findById(boxId).session(session);
+      if (!box) throw new Error('Box introuvable');
+      if (box.boutique) throw new Error('Box deja occupee');
 
+      const tempPassword = crypto.randomBytes(6).toString('hex');
+      const tempPseudo = `boutique_${Date.now()}`;
 
-  box.boutique = boutique._id;
-  await box.save();
+      const user = new User({
+        pseudo: tempPseudo,
+        firstName,
+        lastName,
+        email,
+        password: tempPassword,
+        role: 'BOUTIQUE',
+        status: 'BLOCKED',
+        isAccountCompleted: false
+      });
+      await user.save({ session });
 
-  await Contract.create({
-    ...contractData,
-    boutique: boutique._id
-  });
+      const boutique = new Boutique({
+        name: `${firstName} ${lastName} Boutique`,
+        owner: user._id
+      });
+      await boutique.save({ session });
 
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = await bcrypt.hash(rawToken, 10);
+      box.boutique = boutique._id;
+      await box.save({ session });
 
-  user.activationTokenHash = hashedToken;
-  user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
-  await user.save();
+      const contract = new Contract({
+        ...contractData,
+        boutique: boutique._id
+      });
+      await contract.save({ session });
 
-  const activationLink = `${process.env.FRONTEND_URL}/activate-account?token=${rawToken}&id=${user._id}`;
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = await bcrypt.hash(rawToken, 10);
 
-  await sendActivationEmail(
-    user.email,
-    activationLink,
-    user.firstName
-  );
-  
-  return { message: "Utilisateur créé et email envoyé" };
-  
+      user.activationTokenHash = hashedToken;
+      user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+      user.boutique = boutique._id;
+      await user.save({ session });
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+      const activationLink = `${frontendUrl}/activate-account?token=${rawToken}&id=${user._id}`;
+
+      await sendActivationEmail(
+        user.email,
+        activationLink,
+        user.firstName
+      );
+
+      response = {
+        message: 'Utilisateur cree et email envoye',
+        userId: user._id,
+        activationLink,
+        activationToken: process.env.NODE_ENV === 'production' ? undefined : rawToken
+      };
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  return response;
 };
 
 module.exports = { createBoutiqueWithContract };
