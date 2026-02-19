@@ -46,9 +46,9 @@ const contractSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-contractSchema.pre('save', function(next) {
+contractSchema.pre('save', function () {
   if (this.endDate <= this.startDate) {
-    return next(new Error("End date must be after start date"));
+    throw new Error('End date must be after start date');
   }
 });
 

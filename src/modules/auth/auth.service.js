@@ -39,9 +39,42 @@ const parseBoolean = (value) => {
   return undefined;
 };
 
+const normalizeToken = (value) => {
+  if (value === undefined || value === null) return '';
+  let token = String(value).trim();
+
+  // Supporte le copier-coller avec guillemets
+  if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
+    token = token.slice(1, -1).trim();
+  }
+
+  try {
+    token = decodeURIComponent(token);
+  } catch (_) {
+    // no-op si deja decode
+  }
+
+  return token;
+};
+
+const extractFromActivationLink = (activationLink) => {
+  if (!activationLink) return { userId: null, token: null };
+
+  try {
+    const url = new URL(String(activationLink).trim());
+    return {
+      userId: url.searchParams.get('id'),
+      token: url.searchParams.get('token')
+    };
+  } catch (_) {
+    return { userId: null, token: null };
+  }
+};
+
 const completeBoutiqueProfileService = async ({
   userId,
   token,
+  activationLink,
   password,
   pseudo,
   firstName,
@@ -51,17 +84,25 @@ const completeBoutiqueProfileService = async ({
   onlineSalesEnabled,
   logo
 }) => {
-  if (!userId || !token || !password || !pseudo || !boutiqueName) {
+  const fromLink = extractFromActivationLink(activationLink);
+  const resolvedUserId = userId || fromLink.userId;
+  const resolvedToken = normalizeToken(token || fromLink.token);
+
+  if (!resolvedUserId || !resolvedToken || !password || !pseudo || !boutiqueName) {
     throw new Error('userId, token, password, pseudo et boutiqueName sont obligatoires');
   }
 
-  const user = await User.findById(userId);
+  const user = await User.findById(resolvedUserId);
   if (!user) {
     throw new Error('Compte introuvable');
   }
 
   if (user.role !== 'BOUTIQUE') {
     throw new Error('Ce compte ne peut pas completer un profil boutique');
+  }
+
+  if (user.isAccountCompleted === true) {
+    throw new Error('Ce compte est deja active');
   }
 
   if (!user.activationTokenHash || !user.activationTokenExpires) {
@@ -72,9 +113,9 @@ const completeBoutiqueProfileService = async ({
     throw new Error('Token d activation expire');
   }
 
-  const isTokenValid = await bcrypt.compare(token, user.activationTokenHash);
+  const isTokenValid = await bcrypt.compare(resolvedToken, user.activationTokenHash);
   if (!isTokenValid) {
-    throw new Error('Token d activation invalide');
+    throw new Error('Token d activation invalide (verifiez le token et le userId du meme lien)');
   }
 
   const existingPseudo = await User.findOne({ pseudo, _id: { $ne: user._id } });
