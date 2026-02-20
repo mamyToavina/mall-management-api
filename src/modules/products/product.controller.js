@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const productService = require('./product.service');
 
 const parseMaybeJSON = (value, fallback) => {
@@ -50,6 +51,17 @@ const buildProductPayload = (body) => {
   );
 };
 
+const unlinkIfExists = (filePath) => {
+  if (!filePath) return;
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+};
+
+const imagePathToAbsolute = (imagePath) => {
+  if (!imagePath) return null;
+  const safeRelative = imagePath.replace(/^\/+/, '');
+  return path.join(process.cwd(), safeRelative);
+};
+
 class ProductController {
   async listMine(req, res, next) {
     try {
@@ -92,6 +104,82 @@ class ProductController {
       const product = await productService.updateMine(req.user.id, req.params.id, payload);
       if (!product) return res.status(404).json({ message: 'Produit introuvable' });
       res.json(product);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async addImageMine(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'Image obligatoire (upload fichier)' });
+      }
+
+      const imagePath = `/uploads/products/${req.file.filename}`;
+      const product = await productService.addImageMine(req.user.id, req.params.id, imagePath);
+      if (!product) {
+        unlinkIfExists(req.file.path);
+        return res.status(404).json({ message: 'Produit introuvable' });
+      }
+
+      res.json(product);
+    } catch (error) {
+      if (req.file) unlinkIfExists(req.file.path);
+      next(error);
+    }
+  }
+
+  async replaceImageMine(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'Nouvelle image obligatoire (upload fichier)' });
+      }
+
+      const oldImage = req.body.oldImage;
+      if (!oldImage || typeof oldImage !== 'string') {
+        unlinkIfExists(req.file.path);
+        return res.status(400).json({ message: 'oldImage est obligatoire' });
+      }
+
+      const newImagePath = `/uploads/products/${req.file.filename}`;
+      const result = await productService.replaceImageMine(
+        req.user.id,
+        req.params.id,
+        oldImage,
+        newImagePath
+      );
+
+      if (!result) {
+        unlinkIfExists(req.file.path);
+        return res.status(404).json({ message: 'Produit introuvable' });
+      }
+
+      if (result.oldImageToDelete) {
+        unlinkIfExists(imagePathToAbsolute(result.oldImageToDelete));
+      }
+
+      res.json(result.product);
+    } catch (error) {
+      if (req.file) unlinkIfExists(req.file.path);
+      next(error);
+    }
+  }
+
+  async removeImageMine(req, res, next) {
+    try {
+      const imagePath = req.body?.imagePath || req.query?.imagePath;
+      if (!imagePath || typeof imagePath !== 'string') {
+        return res.status(400).json({ message: 'imagePath est obligatoire' });
+      }
+
+      const result = await productService.removeImageMine(req.user.id, req.params.id, imagePath);
+      if (!result) return res.status(404).json({ message: 'Produit introuvable' });
+
+      if (result.imageToDelete) {
+        unlinkIfExists(imagePathToAbsolute(result.imageToDelete));
+      }
+
+      res.json(result.product);
     } catch (error) {
       next(error);
     }
