@@ -104,6 +104,47 @@ class ProductService {
     );
   }
 
+  async addImageMine(userId, productId, imagePath) {
+    const boutique = await this.resolveBoutique(userId);
+    const product = await Product.findOne({ _id: productId, boutique: boutique._id });
+    if (!product) return null;
+
+    product.images = [...(product.images || []), imagePath];
+    await product.save();
+    return product;
+  }
+
+  async replaceImageMine(userId, productId, oldImage, newImagePath) {
+    const boutique = await this.resolveBoutique(userId);
+    const product = await Product.findOne({ _id: productId, boutique: boutique._id });
+    if (!product) return null;
+
+    const index = (product.images || []).indexOf(oldImage);
+    if (index === -1) throw new Error('Image introuvable dans ce produit');
+
+    const nextImages = [...product.images];
+    nextImages[index] = newImagePath;
+    product.images = nextImages;
+    await product.save();
+
+    return { product, oldImageToDelete: oldImage };
+  }
+
+  async removeImageMine(userId, productId, imagePath) {
+    const boutique = await this.resolveBoutique(userId);
+    const product = await Product.findOne({ _id: productId, boutique: boutique._id });
+    if (!product) return null;
+
+    const currentImages = product.images || [];
+    if (!currentImages.includes(imagePath)) throw new Error('Image introuvable dans ce produit');
+    if (currentImages.length <= 1) throw new Error('Au moins une image doit etre conservee');
+
+    product.images = currentImages.filter((img) => img !== imagePath);
+    await product.save();
+
+    return { product, imageToDelete: imagePath };
+  }
+
   async deleteMine(userId, productId) {
     const boutique = await this.resolveBoutique(userId);
     return Product.findOneAndDelete({ _id: productId, boutique: boutique._id });

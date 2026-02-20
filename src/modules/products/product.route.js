@@ -20,9 +20,12 @@ router.get('/:id', controller.getMineById);
 router.get('/:id/stock-movements', controller.listStockMovements);
 
 router.post('/', uploadProductImage, controller.createMine);
+router.post('/:id/images', uploadProductImage, controller.addImageMine);
 router.patch('/:id', controller.updateMine);
+router.patch('/:id/images/replace', uploadProductImage, controller.replaceImageMine);
 router.patch('/:id/stock', controller.adjustStock);
 router.patch('/:id/promotion', controller.setPromotion);
+router.delete('/:id/images', controller.removeImageMine);
 router.delete('/:id/promotion', controller.clearPromotion);
 router.delete('/:id', controller.deleteMine);
 
