@@ -1,6 +1,6 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-19T21:02:48.761Z`
+Generated at: `2026-02-24T12:07:42.448Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
@@ -35,6 +35,9 @@ Generated at: `2026-02-19T21:02:48.761Z`
 | `DELETE` | `/api/products/:id` | `products` | `src/modules/products/product.route.js` |
 | `GET` | `/api/products/:id` | `products` | `src/modules/products/product.route.js` |
 | `PATCH` | `/api/products/:id` | `products` | `src/modules/products/product.route.js` |
+| `DELETE` | `/api/products/:id/images` | `products` | `src/modules/products/product.route.js` |
+| `POST` | `/api/products/:id/images` | `products` | `src/modules/products/product.route.js` |
+| `PATCH` | `/api/products/:id/images/replace` | `products` | `src/modules/products/product.route.js` |
 | `DELETE` | `/api/products/:id/promotion` | `products` | `src/modules/products/product.route.js` |
 | `PATCH` | `/api/products/:id/promotion` | `products` | `src/modules/products/product.route.js` |
 | `PATCH` | `/api/products/:id/stock` | `products` | `src/modules/products/product.route.js` |

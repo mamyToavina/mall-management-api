@@ -51,9 +51,47 @@ const creditSchema = new mongoose.Schema(
     usedAt: {
       type: Date,
       default: null
-    }
+    },
+
+    idempotencyKeyHash: {
+      type: String,
+      default: null
+    },
+
+    history: [
+      {
+        action: {
+          type: String,
+          enum: ["generated", "printed", "used", "expired", "cancelled"],
+          required: true
+        },
+        by: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null
+        },
+        at: {
+          type: Date,
+          default: Date.now
+        },
+        metadata: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null
+        }
+      }
+    ]
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
+);
+
+creditSchema.index(
+  { idempotencyKeyHash: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKeyHash: { $type: "string" } }
+  }
 );
 
 module.exports = mongoose.model("Credit", creditSchema);
