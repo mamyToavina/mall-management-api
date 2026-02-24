@@ -261,6 +261,43 @@
         }
       }
     },
+    "/products/:id/images": {
+      "delete": {
+        "tags": [
+          "products"
+        ],
+        "summary": "DELETE /api/products/:id/images",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "products"
+        ],
+        "summary": "POST /api/products/:id/images",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/:id/images/replace": {
+      "patch": {
+        "tags": [
+          "products"
+        ],
+        "summary": "PATCH /api/products/:id/images/replace",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/products/:id/promotion": {
       "delete": {
         "tags": [
