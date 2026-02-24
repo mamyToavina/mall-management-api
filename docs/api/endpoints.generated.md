@@ -1,9 +1,16 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-24T12:07:42.448Z`
+Generated at: `2026-02-24T18:21:50.862Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
+| `GET` | `/api/activities/` | `activities` | `src/modules/activities/activity.routes.js` |
+| `POST` | `/api/activities/` | `activities` | `src/modules/activities/activity.routes.js` |
+| `DELETE` | `/api/activities/:id` | `activities` | `src/modules/activities/activity.routes.js` |
+| `GET` | `/api/activities/:id` | `activities` | `src/modules/activities/activity.routes.js` |
+| `PATCH` | `/api/activities/:id` | `activities` | `src/modules/activities/activity.routes.js` |
+| `PATCH` | `/api/activities/:id/photo` | `activities` | `src/modules/activities/activity.routes.js` |
+| `GET` | `/api/activities/public/upcoming` | `activities` | `src/modules/activities/activity.routes.js` |
 | `POST` | `/api/admin/create-tenant` | `admin` | `src/modules/admin/admin.routes.js` |
 | `POST` | `/api/admin/create-tenant` | `admin` | `src/modules/admin/admin.routes.js` |
 | `POST` | `/api/auth/complete-boutique-profile` | `auth` | `src/modules/auth/auth.routes.js` |

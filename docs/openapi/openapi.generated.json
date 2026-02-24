@@ -11,6 +11,91 @@
     }
   ],
   "paths": {
+    "/activities/": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "GET /api/activities/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "POST /api/activities/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/activities/:id": {
+      "delete": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "DELETE /api/activities/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "GET /api/activities/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "PATCH /api/activities/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/activities/:id/photo": {
+      "patch": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "PATCH /api/activities/:id/photo",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/activities/public/upcoming": {
+      "get": {
+        "tags": [
+          "activities"
+        ],
+        "summary": "GET /api/activities/public/upcoming",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/admin/create-tenant": {
       "post": {
         "tags": [
