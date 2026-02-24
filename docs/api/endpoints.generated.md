@@ -1,6 +1,6 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-24T22:38:02.700Z`
+Generated at: `2026-02-24T23:13:03.435Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
@@ -49,6 +49,9 @@ Generated at: `2026-02-24T22:38:02.700Z`
 | `PATCH` | `/api/products/:id/promotion` | `products` | `src/modules/products/product.route.js` |
 | `PATCH` | `/api/products/:id/stock` | `products` | `src/modules/products/product.route.js` |
 | `GET` | `/api/products/:id/stock-movements` | `products` | `src/modules/products/product.route.js` |
+| `GET` | `/api/sales/boutique/delivery-capacity` | `sales` | `src/modules/sales/sale.routes.js` |
+| `GET` | `/api/sales/boutique/delivery-settings` | `sales` | `src/modules/sales/sale.routes.js` |
+| `PATCH` | `/api/sales/boutique/delivery-settings` | `sales` | `src/modules/sales/sale.routes.js` |
 | `GET` | `/api/sales/boutique/orders` | `sales` | `src/modules/sales/sale.routes.js` |
 | `GET` | `/api/sales/boutique/orders/:id` | `sales` | `src/modules/sales/sale.routes.js` |
 | `PATCH` | `/api/sales/boutique/orders/:id` | `sales` | `src/modules/sales/sale.routes.js` |

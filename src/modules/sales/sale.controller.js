@@ -142,6 +142,62 @@ class SaleController {
       sendError(res, error);
     }
   }
+
+  async getDeliverySettings(req, res) {
+    try {
+      const result = await saleService.getDeliverySettings({
+        userId: req.user.id,
+        role: req.user.role,
+        boutiqueId: req.query.boutiqueId
+      });
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      sendError(res, error);
+    }
+  }
+
+  async updateDeliverySettings(req, res) {
+    try {
+      const result = await saleService.updateDeliverySettings({
+        userId: req.user.id,
+        role: req.user.role,
+        boutiqueId: req.body.boutiqueId || req.query.boutiqueId,
+        workingDays: req.body.workingDays,
+        dailyOrderCapacity: req.body.dailyOrderCapacity,
+        preparationDays: req.body.preparationDays
+      });
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      sendError(res, error);
+    }
+  }
+
+  async getDeliveryCapacityCalendar(req, res) {
+    try {
+      const result = await saleService.getDeliveryCapacityCalendar({
+        userId: req.user.id,
+        role: req.user.role,
+        boutiqueId: req.query.boutiqueId,
+        from: req.query.from,
+        to: req.query.to
+      });
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      sendError(res, error);
+    }
+  }
 }
 
 module.exports = new SaleController();

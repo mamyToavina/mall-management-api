@@ -103,6 +103,14 @@ class SaleService {
     return Math.trunc(days);
   }
 
+  getNormalizedDeliverySettings(boutique) {
+    return {
+      workingDays: this.normalizeWorkingDays(boutique).sort((a, b) => a - b),
+      dailyOrderCapacity: this.getDailyCapacity(boutique),
+      preparationDays: this.getPreparationDays(boutique)
+    };
+  }
+
   async countBoutiqueOrdersForDay({ boutiqueId, dayDate, session, excludeSaleId = null }) {
     const dayStart = startOfDay(dayDate);
     const nextDay = addDays(dayStart, 1);
@@ -194,6 +202,162 @@ class SaleService {
       throw new SaleServiceError("Aucune boutique liee a ce compte", 404, "BOUTIQUE_NOT_FOUND");
     }
     return boutique;
+  }
+
+  async getDeliverySettings({ userId, role, boutiqueId = null }) {
+    const boutique = await this.resolveBoutiqueForActor({ userId, role, boutiqueId });
+    return {
+      boutiqueId: String(boutique._id),
+      boutiqueName: boutique.name,
+      deliverySettings: this.getNormalizedDeliverySettings(boutique)
+    };
+  }
+
+  async updateDeliverySettings({
+    userId,
+    role,
+    boutiqueId = null,
+    workingDays,
+    dailyOrderCapacity,
+    preparationDays
+  }) {
+    const boutique = await this.resolveBoutiqueForActor({ userId, role, boutiqueId });
+
+    const nextSettings = {
+      ...this.getNormalizedDeliverySettings(boutique)
+    };
+
+    if (Array.isArray(workingDays)) {
+      const unique = [...new Set(workingDays.map((v) => Number(v)))].filter(
+        (v) => Number.isInteger(v) && v >= 0 && v <= 6
+      );
+      if (!unique.length) {
+        throw new SaleServiceError(
+          "workingDays invalide: au moins un jour requis",
+          400,
+          "INVALID_WORKING_DAYS"
+        );
+      }
+      nextSettings.workingDays = unique.sort((a, b) => a - b);
+    }
+
+    if (dailyOrderCapacity !== undefined) {
+      nextSettings.dailyOrderCapacity = Math.trunc(Number(dailyOrderCapacity));
+    }
+
+    if (preparationDays !== undefined) {
+      nextSettings.preparationDays = Math.trunc(Number(preparationDays));
+    }
+
+    boutique.deliverySettings = nextSettings;
+    await boutique.save();
+
+    return {
+      boutiqueId: String(boutique._id),
+      boutiqueName: boutique.name,
+      deliverySettings: this.getNormalizedDeliverySettings(boutique)
+    };
+  }
+
+  async getDeliveryCapacityCalendar({ userId, role, boutiqueId = null, from = null, to = null }) {
+    const boutique = await this.resolveBoutiqueForActor({ userId, role, boutiqueId });
+    const settings = this.getNormalizedDeliverySettings(boutique);
+
+    const today = startOfDay(new Date());
+    const fromDate = from ? startOfDay(new Date(from)) : today;
+    const defaultTo = addDays(fromDate, 29);
+    const toDate = to ? startOfDay(new Date(to)) : defaultTo;
+
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new SaleServiceError("Periode invalide", 400, "INVALID_PERIOD");
+    }
+
+    if (toDate < fromDate) {
+      throw new SaleServiceError("La date de fin doit etre >= date debut", 400, "INVALID_PERIOD");
+    }
+
+    const maxRangeDays = 92;
+    const dayCount = Math.floor((toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    if (dayCount > maxRangeDays) {
+      throw new SaleServiceError(
+        `Periode trop longue (max ${maxRangeDays} jours)`,
+        400,
+        "PERIOD_TOO_LARGE"
+      );
+    }
+
+    const toExclusive = addDays(toDate, 1);
+    const pipeline = [
+      {
+        $match: {
+          status: { $ne: "CANCELLED" },
+          boutiqueBreakdown: {
+            $elemMatch: {
+              boutique: boutique._id,
+              deliveryDate: { $gte: fromDate, $lt: toExclusive },
+              fulfillmentStatus: { $ne: "REJECTED" }
+            }
+          }
+        }
+      },
+      { $unwind: "$boutiqueBreakdown" },
+      {
+        $match: {
+          "boutiqueBreakdown.boutique": boutique._id,
+          "boutiqueBreakdown.deliveryDate": { $gte: fromDate, $lt: toExclusive },
+          "boutiqueBreakdown.fulfillmentStatus": { $ne: "REJECTED" }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$boutiqueBreakdown.deliveryDate",
+              timezone: "UTC"
+            }
+          },
+          ordersCount: { $sum: 1 }
+        }
+      }
+    ];
+
+    const usage = await Sale.aggregate(pipeline);
+    const usageByDay = new Map(usage.map((entry) => [entry._id, Number(entry.ordersCount) || 0]));
+
+    const days = [];
+    let cursor = new Date(fromDate);
+    while (cursor <= toDate) {
+      const dateKey = cursor.toISOString().slice(0, 10);
+      const dayOfWeek = cursor.getDay();
+      const isWorkingDay = settings.workingDays.includes(dayOfWeek);
+      const capacity = isWorkingDay ? settings.dailyOrderCapacity : 0;
+      const used = usageByDay.get(dateKey) || 0;
+      const remaining = Math.max(0, capacity - used);
+
+      days.push({
+        date: new Date(cursor).toISOString(),
+        dayOfWeek,
+        isWorkingDay,
+        capacity,
+        used,
+        remaining,
+        isFull: isWorkingDay ? remaining <= 0 : false
+      });
+
+      cursor = addDays(cursor, 1);
+    }
+
+    return {
+      boutiqueId: String(boutique._id),
+      boutiqueName: boutique.name,
+      deliverySettings: settings,
+      period: {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString()
+      },
+      days
+    };
   }
 
   toBoutiqueOrderView(sale, boutiqueId) {

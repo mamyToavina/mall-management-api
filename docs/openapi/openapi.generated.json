@@ -433,6 +433,43 @@
         }
       }
     },
+    "/sales/boutique/delivery-capacity": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/boutique/delivery-capacity",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/sales/boutique/delivery-settings": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/boutique/delivery-settings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "PATCH /api/sales/boutique/delivery-settings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/sales/boutique/orders": {
       "get": {
         "tags": [
