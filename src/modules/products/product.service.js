@@ -5,6 +5,97 @@ const User = require('../users/user.model');
 const paginate = require('../../utils/pagination');
 
 class ProductService {
+  computePublicPromotionView(product) {
+    if (!product) return null;
+
+    const now = new Date();
+    const promotion = product.promotion || null;
+    const startsAt = promotion?.startsAt ? new Date(promotion.startsAt) : null;
+    const endsAt = promotion?.endsAt ? new Date(promotion.endsAt) : null;
+    const hasActivePromotion =
+      Boolean(promotion?.enabled) &&
+      startsAt &&
+      endsAt &&
+      now >= startsAt &&
+      now <= endsAt &&
+      typeof promotion?.percentage === 'number';
+
+    if (!hasActivePromotion) return null;
+
+    const originalPrice = Number(product.price);
+    const promoPrice =
+      typeof product.promotionPrice === 'number'
+        ? Number(product.promotionPrice)
+        : Math.round((originalPrice - (originalPrice * promotion.percentage) / 100) * 100) / 100;
+
+    if (!Number.isFinite(originalPrice) || !Number.isFinite(promoPrice) || promoPrice >= originalPrice) {
+      return null;
+    }
+
+    const boutique = product.boutique;
+    if (!boutique || boutique.status !== 'ACTIVE') return null;
+
+    const imageUrl =
+      Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
+
+    return {
+      id: String(product._id),
+      name: product.name,
+      description: product.description || '',
+      category: product.category || '',
+      imageUrl,
+      currency: product.currency || 'MGA',
+      originalPrice,
+      promoPrice,
+      discountRate: Math.round(((originalPrice - promoPrice) / originalPrice) * 100),
+      promotion: {
+        percentage: promotion.percentage,
+        startsAt,
+        endsAt
+      },
+      boutique: {
+        id: String(boutique._id),
+        name: boutique.name,
+        logo: boutique.logo || null
+      }
+    };
+  }
+
+  async listPublicPromotions({ limit = 12, boutiqueId } = {}) {
+    const parsedLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
+
+    const query = {
+      status: 'ACTIVE',
+      isPublished: true,
+      'promotion.enabled': true
+    };
+
+    if (boutiqueId) {
+      query.boutique = boutiqueId;
+    }
+
+    const docs = await Product.find(query)
+      .sort({ updatedAt: -1 })
+      .limit(parsedLimit * 4)
+      .populate({ path: 'boutique', select: 'name logo status' });
+
+    const items = [];
+    for (const doc of docs) {
+      const view = this.computePublicPromotionView(doc);
+      if (!view) continue;
+      items.push(view);
+      if (items.length >= parsedLimit) break;
+    }
+
+    return {
+      data: items,
+      meta: {
+        total: items.length,
+        limit: parsedLimit
+      }
+    };
+  }
+
   async resolveBoutique(userId) {
     const user = await User.findById(userId).select('boutique');
     if (!user) throw new Error('Utilisateur introuvable');

@@ -63,6 +63,16 @@ const imagePathToAbsolute = (imagePath) => {
 };
 
 class ProductController {
+  async listPublicPromotions(req, res, next) {
+    try {
+      const { limit, boutiqueId } = req.query;
+      const result = await productService.listPublicPromotions({ limit, boutiqueId });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listMine(req, res, next) {
     try {
       const result = await productService.listMine(req.user.id, req.query);

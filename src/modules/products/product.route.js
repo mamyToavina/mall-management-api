@@ -13,6 +13,8 @@ const uploadProductImage = createImageUploader({
   maxSizeMB: 5
 });
 
+router.get('/public/promotions', controller.listPublicPromotions);
+
 router.use(protect, authorize('BOUTIQUE'));
 
 router.get('/', controller.listMine);
