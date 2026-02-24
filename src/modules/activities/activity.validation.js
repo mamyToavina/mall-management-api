@@ -73,6 +73,12 @@ const validateCreate = [
     .bail()
     .isISO8601()
     .withMessage("dateIso must be a valid ISO date"),
+  body("durationDays")
+    .exists()
+    .withMessage("durationDays is required")
+    .bail()
+    .isInt({ min: 1, max: 365 })
+    .withMessage("durationDays must be an integer between 1 and 365"),
   body("location")
     .exists()
     .withMessage("location is required")
@@ -122,6 +128,10 @@ const validateUpdate = [
     .optional()
     .isISO8601()
     .withMessage("dateIso must be a valid ISO date"),
+  body("durationDays")
+    .optional()
+    .isInt({ min: 1, max: 365 })
+    .withMessage("durationDays must be an integer between 1 and 365"),
   body("location")
     .optional()
     .isString()

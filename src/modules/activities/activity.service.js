@@ -7,6 +7,7 @@ const DEFAULT_ACTIVITIES = [
     description:
       "Une soiree immersive avec offres flash, showcases boutiques et experiences premium jusqu a 22h.",
     eventDate: new Date("2027-03-14T18:00:00+03:00"),
+    durationDays: 1,
     location: "Atrium Central - TI Commercial",
     imageUrl:
       "https://images.pexels.com/photos/374894/pexels-photo-374894.jpeg?auto=compress&cs=tinysrgb&w=1400",
@@ -19,6 +20,7 @@ const DEFAULT_ACTIVITIES = [
     description:
       "Degustations exclusives, corners chefs invites et ambiance live pour toute la famille.",
     eventDate: new Date("2027-03-22T11:00:00+03:00"),
+    durationDays: 2,
     location: "Esplanade Nord - TI Commercial",
     imageUrl:
       "https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=1400",
@@ -31,6 +33,7 @@ const DEFAULT_ACTIVITIES = [
     description:
       "Decouvrez les marques emergentes, demos interactives et animations tech pour petits et grands.",
     eventDate: new Date("2027-04-05T10:00:00+03:00"),
+    durationDays: 2,
     location: "Hall Est - TI Commercial",
     imageUrl:
       "https://images.pexels.com/photos/587741/pexels-photo-587741.jpeg?auto=compress&cs=tinysrgb&w=1400",

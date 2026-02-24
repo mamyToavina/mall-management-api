@@ -18,6 +18,12 @@ const activitySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    durationDays: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 1,
+    },
     location: {
       type: String,
       required: true,

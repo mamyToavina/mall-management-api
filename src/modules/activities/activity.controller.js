@@ -11,6 +11,13 @@ const parseBoolean = (value) => {
   return undefined;
 };
 
+const parseMaybeInt = (value) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) return undefined;
+  return Math.trunc(parsed);
+};
+
 const unlinkIfExists = (filePath) => {
   if (!filePath) return;
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -27,6 +34,7 @@ const toPublicActivityDTO = (activity) => ({
   title: activity.title,
   description: activity.description,
   dateIso: new Date(activity.eventDate).toISOString(),
+  durationDays: Number(activity.durationDays) || 1,
   location: activity.location,
   imageUrl: activity.imageUrl,
   tag: activity.tag,
@@ -84,6 +92,7 @@ class ActivityController {
         title: req.body.title,
         description: req.body.description,
         eventDate: req.body.dateIso,
+        durationDays: parseMaybeInt(req.body.durationDays),
         location: req.body.location,
         imageUrl: `/uploads/activities/${req.file.filename}`,
         tag: req.body.tag,
@@ -106,6 +115,9 @@ class ActivityController {
       if (req.body.title !== undefined) payload.title = req.body.title;
       if (req.body.description !== undefined) payload.description = req.body.description;
       if (req.body.dateIso !== undefined) payload.eventDate = req.body.dateIso;
+      if (req.body.durationDays !== undefined) {
+        payload.durationDays = parseMaybeInt(req.body.durationDays);
+      }
       if (req.body.location !== undefined) payload.location = req.body.location;
       if (req.body.tag !== undefined) payload.tag = req.body.tag;
 
