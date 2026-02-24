@@ -6,6 +6,7 @@ const FOLDERS = {
   user: "users",
   product: "products",
   boutique: "boutiques",
+  activity: "activities",
 };
 
 const IMAGE_MIME_TYPES = new Set([
