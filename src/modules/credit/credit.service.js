@@ -325,7 +325,9 @@ class CreditService {
       Credit.find(filters)
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .populate("usedBy", "pseudo firstName lastName email")
+        .populate("createdBy", "pseudo firstName lastName email"),
       Credit.countDocuments(filters)
     ]);
 
