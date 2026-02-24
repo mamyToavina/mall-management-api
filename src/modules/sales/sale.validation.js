@@ -151,11 +151,62 @@ const validateBoutiqueOrderUpdate = [
   handleValidation
 ];
 
+const validateDeliverySettingsQuery = [
+  query("boutiqueId")
+    .optional()
+    .custom((value) => mongoose.Types.ObjectId.isValid(value))
+    .withMessage("boutiqueId must be a valid ObjectId"),
+  handleValidation
+];
+
+const validateDeliverySettingsUpdate = [
+  body("boutiqueId")
+    .optional()
+    .custom((value) => mongoose.Types.ObjectId.isValid(value))
+    .withMessage("boutiqueId must be a valid ObjectId"),
+  body("workingDays")
+    .optional()
+    .isArray({ min: 1, max: 7 })
+    .withMessage("workingDays must be an array between 1 and 7 entries"),
+  body("workingDays.*")
+    .optional()
+    .isInt({ min: 0, max: 6 })
+    .withMessage("workingDays values must be integers between 0 and 6"),
+  body("dailyOrderCapacity")
+    .optional()
+    .isInt({ min: 1, max: 5000 })
+    .withMessage("dailyOrderCapacity must be between 1 and 5000"),
+  body("preparationDays")
+    .optional()
+    .isInt({ min: 0, max: 30 })
+    .withMessage("preparationDays must be between 0 and 30"),
+  handleValidation
+];
+
+const validateCapacityCalendarQuery = [
+  query("boutiqueId")
+    .optional()
+    .custom((value) => mongoose.Types.ObjectId.isValid(value))
+    .withMessage("boutiqueId must be a valid ObjectId"),
+  query("from")
+    .optional()
+    .isISO8601()
+    .withMessage("from must be a valid ISO8601 date"),
+  query("to")
+    .optional()
+    .isISO8601()
+    .withMessage("to must be a valid ISO8601 date"),
+  handleValidation
+];
+
 module.exports = {
   validateCheckout,
   validateListMySales,
   validateMySaleId,
   validateListBoutiqueOrders,
   validateBoutiqueSaleId,
-  validateBoutiqueOrderUpdate
+  validateBoutiqueOrderUpdate,
+  validateDeliverySettingsQuery,
+  validateDeliverySettingsUpdate,
+  validateCapacityCalendarQuery
 };

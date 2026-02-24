@@ -8,7 +8,10 @@ const {
   validateMySaleId,
   validateListBoutiqueOrders,
   validateBoutiqueSaleId,
-  validateBoutiqueOrderUpdate
+  validateBoutiqueOrderUpdate,
+  validateDeliverySettingsQuery,
+  validateDeliverySettingsUpdate,
+  validateCapacityCalendarQuery
 } = require("./sale.validation");
 
 const router = express.Router();
@@ -25,6 +28,24 @@ router.patch(
   authorize("BOUTIQUE", "ADMIN"),
   validateBoutiqueOrderUpdate,
   saleController.updateBoutiqueOrder
+);
+router.get(
+  "/boutique/delivery-settings",
+  authorize("BOUTIQUE", "ADMIN"),
+  validateDeliverySettingsQuery,
+  saleController.getDeliverySettings
+);
+router.patch(
+  "/boutique/delivery-settings",
+  authorize("BOUTIQUE", "ADMIN"),
+  validateDeliverySettingsUpdate,
+  saleController.updateDeliverySettings
+);
+router.get(
+  "/boutique/delivery-capacity",
+  authorize("BOUTIQUE", "ADMIN"),
+  validateCapacityCalendarQuery,
+  saleController.getDeliveryCapacityCalendar
 );
 
 module.exports = router;
