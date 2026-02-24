@@ -432,6 +432,82 @@
           }
         }
       }
+    },
+    "/sales/boutique/orders": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/boutique/orders",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/sales/boutique/orders/:id": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/boutique/orders/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "PATCH /api/sales/boutique/orders/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/sales/checkout": {
+      "post": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "POST /api/sales/checkout",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/sales/my": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/my",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/sales/my/:id": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "GET /api/sales/my/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
     }
   }
 }
