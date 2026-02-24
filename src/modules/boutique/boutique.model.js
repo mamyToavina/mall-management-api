@@ -1,5 +1,34 @@
 const mongoose = require("mongoose");
 
+const deliverySettingsSchema = new mongoose.Schema(
+  {
+    workingDays: {
+      type: [Number],
+      default: [1, 2, 3, 4, 5],
+      validate: {
+        validator: (arr) =>
+          Array.isArray(arr) &&
+          arr.length > 0 &&
+          arr.every((value) => Number.isInteger(value) && value >= 0 && value <= 6),
+        message: "workingDays must contain integers between 0 and 6"
+      }
+    },
+    dailyOrderCapacity: {
+      type: Number,
+      default: 30,
+      min: 1,
+      max: 5000
+    },
+    preparationDays: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 30
+    }
+  },
+  { _id: false }
+);
+
 const boutiqueSchema = new mongoose.Schema({
 
   name: {
@@ -23,6 +52,11 @@ const boutiqueSchema = new mongoose.Schema({
   onlineSalesEnabled: {
     type: Boolean,
     default: false
+  },
+
+  deliverySettings: {
+    type: deliverySettingsSchema,
+    default: () => ({})
   },
 
   status: {

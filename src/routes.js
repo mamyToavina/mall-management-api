@@ -25,6 +25,7 @@ const boxRoutes = require('./modules/boxes/box.route');
 const productRoutes = require('./modules/products/product.route');
 const billingRoutes = require('./modules/billing/billing.route');
 const activityRoutes = require('./modules/activities/activity.routes');
+const saleRoutes = require('./modules/sales/sale.routes');
 
 const userRoutes = require(path.resolve(__dirname, './modules/users/user.routes.js'));
 const creditRoutes = require(path.resolve(__dirname, './modules/credit/credit.routes.js'));
@@ -39,6 +40,7 @@ router.use('/products', productRoutes);
 router.use('/billing', billingRoutes);
 router.use('/credit', creditRoutes);
 router.use('/activities', activityRoutes);
+router.use('/sales', saleRoutes);
 
 module.exports = router;
 
