@@ -181,6 +181,34 @@ class SaleService {
     return "PLACED";
   }
 
+  computeBoutiqueRefundAmount({ sale, boutiqueId, fallbackSubtotal = 0 }) {
+    const items = sale.items.filter((item) => String(item.boutique) === String(boutiqueId));
+    if (!items.length) return 0;
+
+    const fromLines = roundMoney(
+      items.reduce((sum, item) => {
+        const lineGrandTotal = Number(item.lineGrandTotal);
+        if (Number.isFinite(lineGrandTotal) && lineGrandTotal > 0) return sum + lineGrandTotal;
+
+        const lineTotal = Number(item.lineTotal) || 0;
+        const lineTax = Number(item.lineTax);
+        if (Number.isFinite(lineTax)) return sum + lineTotal + lineTax;
+        return sum + lineTotal;
+      }, 0)
+    );
+
+    if (fromLines > 0) return fromLines;
+
+    // Fallback for legacy sales where tax/grand-total per line was not persisted.
+    const subtotal = Number(sale?.totals?.subtotal) || 0;
+    const taxTotal = Number(sale?.totals?.taxTotal) || 0;
+    const base = Number(fallbackSubtotal) || 0;
+    if (subtotal <= 0 || base <= 0) return base;
+
+    const estimatedTaxShare = roundMoney((taxTotal * base) / subtotal);
+    return roundMoney(base + estimatedTaxShare);
+  }
+
   async resolveBoutiqueForActor({ userId, role, boutiqueId = null }) {
     if (role === "ADMIN" && boutiqueId) {
       const boutique = await Boutique.findById(boutiqueId);
@@ -521,6 +549,8 @@ class SaleService {
             quantity: item.quantity,
             unitPrice,
             lineTotal,
+            lineTax,
+            lineGrandTotal,
             currency: product.currency || "MGA"
           });
 
@@ -589,7 +619,9 @@ class SaleService {
             deliveryDate,
             fulfillmentStatus: "SCHEDULED",
             fulfillmentNote: null,
-            processedAt: null
+            processedAt: null,
+            refundedAmount: 0,
+            refundedAt: null
           });
         }
 
@@ -732,8 +764,17 @@ class SaleService {
         if (index < 0) throw new SaleServiceError("Commande boutique introuvable", 404, "BOUTIQUE_ORDER_NOT_FOUND");
 
         const current = sale.boutiqueBreakdown[index];
+        const previousStatus = current.fulfillmentStatus;
 
-        if (deliveryDate) {
+        if (previousStatus === "REJECTED" && fulfillmentStatus !== "REJECTED") {
+          throw new SaleServiceError(
+            "Impossible de re-activer une commande boutique deja rejetee (remboursement deja effectue)",
+            409,
+            "REJECTED_ORDER_IMMUTABLE"
+          );
+        }
+
+        if (deliveryDate && fulfillmentStatus !== "REJECTED") {
           const parsedDate = new Date(deliveryDate);
           if (Number.isNaN(parsedDate.getTime())) {
             throw new SaleServiceError("deliveryDate invalide", 400, "INVALID_DELIVERY_DATE");
@@ -766,6 +807,46 @@ class SaleService {
           }
 
           current.deliveryDate = day;
+        }
+
+        if (fulfillmentStatus === "REJECTED" && previousStatus !== "REJECTED") {
+          const refundAmount = this.computeBoutiqueRefundAmount({
+            sale,
+            boutiqueId: boutique._id,
+            fallbackSubtotal: current.subtotal
+          });
+
+          if (refundAmount > 0) {
+            const buyer = await User.findByIdAndUpdate(
+              sale.buyer,
+              { $inc: { credit: refundAmount } },
+              { session, new: true }
+            );
+            if (!buyer) {
+              throw new SaleServiceError("Acheteur introuvable", 409, "BUYER_NOT_FOUND");
+            }
+
+            const ownerId = boutique.owner ? String(boutique.owner) : null;
+            if (!ownerId) {
+              throw new SaleServiceError(
+                "Proprietaire boutique introuvable",
+                409,
+                "BOUTIQUE_OWNER_NOT_FOUND"
+              );
+            }
+
+            const seller = await User.findByIdAndUpdate(
+              ownerId,
+              { $inc: { credit: -refundAmount } },
+              { session, new: true }
+            );
+            if (!seller) {
+              throw new SaleServiceError("Vendeur introuvable", 409, "SELLER_NOT_FOUND");
+            }
+          }
+
+          current.refundedAmount = refundAmount;
+          current.refundedAt = new Date();
         }
 
         current.fulfillmentStatus = fulfillmentStatus;
