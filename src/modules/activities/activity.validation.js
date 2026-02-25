@@ -16,10 +16,11 @@ const handleValidation = (req, res, next) => {
 };
 
 const validatePublicUpcoming = [
+  query("page").optional().isInt({ min: 1 }).withMessage("page must be >= 1"),
   query("limit")
     .optional()
-    .isInt({ min: 1, max: 20 })
-    .withMessage("limit must be between 1 and 20"),
+    .isInt({ min: 1, max: 10 })
+    .withMessage("limit must be between 1 and 10"),
   handleValidation,
 ];
 

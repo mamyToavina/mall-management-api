@@ -49,15 +49,29 @@ class ActivityService {
     await Activity.insertMany(DEFAULT_ACTIVITIES);
   }
 
-  async listPublicUpcoming(limit = 8) {
+  async listPublicUpcoming(page = 1, limit = 10) {
     await this.ensureDefaultSeed();
     const now = new Date();
-    return Activity.find({
+    const skip = (page - 1) * limit;
+    const query = {
       isPublished: true,
       eventDate: { $gte: now },
-    })
-      .sort({ eventDate: 1 })
-      .limit(limit);
+    };
+
+    const [data, total] = await Promise.all([
+      Activity.find(query).sort({ eventDate: 1 }).skip(skip).limit(limit),
+      Activity.countDocuments(query),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async listForManagement(queryParams) {
