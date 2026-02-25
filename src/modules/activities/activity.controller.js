@@ -29,7 +29,24 @@ const imagePathToAbsolute = (imagePath) => {
   return path.join(process.cwd(), safeRelative);
 };
 
+const toEventDateRange = (eventDateValue, durationDaysValue) => {
+  const start = new Date(eventDateValue);
+  if (Number.isNaN(start.getTime())) {
+    return { startDateIso: null, endDateIso: null };
+  }
+
+  const durationDays = Math.max(1, Number(durationDaysValue) || 1);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + durationDays - 1);
+
+  return {
+    startDateIso: start.toISOString(),
+    endDateIso: end.toISOString(),
+  };
+};
+
 const toPublicActivityDTO = (activity) => ({
+  ...toEventDateRange(activity.eventDate, activity.durationDays),
   id: String(activity._id),
   title: activity.title,
   description: activity.description,

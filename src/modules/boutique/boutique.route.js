@@ -1,10 +1,19 @@
-const { Router } = require('express')
-const { createBoutique } = require('./boutique.controller.js')
-const auth = require('../../middlewares/auth.middleware.js')
-const checkRole = require('../../middlewares/role.middleware.js')
+const { Router } = require('express');
+const {
+  createBoutique,
+  listPublic,
+  getPublicById,
+  listPublicProducts
+} = require('./boutique.controller.js');
+const { protect } = require('../../middlewares/auth.middleware.js');
+const { authorize } = require('../../middlewares/role.middleware.js');
 
-const router = Router()
+const router = Router();
 
-router.post('/', auth, checkRole('ADMIN'), createBoutique)
+router.get('/public', listPublic);
+router.get('/public/:id', getPublicById);
+router.get('/public/:id/products', listPublicProducts);
 
-module.exports = router
+router.post('/', protect, authorize('ADMIN'), createBoutique);
+
+module.exports = router;
