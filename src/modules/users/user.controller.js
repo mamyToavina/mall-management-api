@@ -24,7 +24,7 @@ const registerUser = async (req, res) => {
       lastName,
       gender,
       password,
-      role: 'ADMIN',
+      role: 'USER',
       status: 'ACTIVE',
       isAccountCompleted: true,
       avatar: req.file ? `/uploads/users/${req.file.filename}` : null
