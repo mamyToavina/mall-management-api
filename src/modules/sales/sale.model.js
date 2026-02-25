@@ -20,6 +20,8 @@ const saleLineSchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, required: true, min: 0 },
     lineTotal: { type: Number, required: true, min: 0 },
+    lineTax: { type: Number, default: 0, min: 0 },
+    lineGrandTotal: { type: Number, default: 0, min: 0 },
     currency: { type: String, required: true, default: "MGA", uppercase: true, trim: true }
   },
   { _id: false }
@@ -52,7 +54,9 @@ const boutiqueBreakdownSchema = new mongoose.Schema(
       required: true
     },
     fulfillmentNote: { type: String, default: null, trim: true },
-    processedAt: { type: Date, default: null }
+    processedAt: { type: Date, default: null },
+    refundedAmount: { type: Number, default: 0, min: 0 },
+    refundedAt: { type: Date, default: null }
   },
   { _id: false }
 );
