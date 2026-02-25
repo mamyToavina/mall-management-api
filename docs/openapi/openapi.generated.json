@@ -213,6 +213,58 @@
         }
       }
     },
+    "/boutiques/": {
+      "post": {
+        "tags": [
+          "boutique"
+        ],
+        "summary": "POST /api/boutiques/",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boutiques/public": {
+      "get": {
+        "tags": [
+          "boutique"
+        ],
+        "summary": "GET /api/boutiques/public",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boutiques/public/:id": {
+      "get": {
+        "tags": [
+          "boutique"
+        ],
+        "summary": "GET /api/boutiques/public/:id",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/boutiques/public/:id/products": {
+      "get": {
+        "tags": [
+          "boutique"
+        ],
+        "summary": "GET /api/boutiques/public/:id/products",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/boxes/": {
       "get": {
         "tags": [
@@ -426,6 +478,19 @@
           "products"
         ],
         "summary": "GET /api/products/:id/stock-movements",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/products/public/promotions": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "GET /api/products/public/promotions",
         "responses": {
           "200": {
             "description": "Success"

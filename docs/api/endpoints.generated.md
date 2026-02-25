@@ -1,6 +1,6 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-24T23:13:03.435Z`
+Generated at: `2026-02-25T12:09:59.594Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
@@ -25,6 +25,10 @@ Generated at: `2026-02-24T23:13:03.435Z`
 | `GET` | `/api/billing/boutique/invoices` | `billing` | `src/modules/billing/billing.route.js` |
 | `GET` | `/api/billing/boutique/invoices/:id` | `billing` | `src/modules/billing/billing.route.js` |
 | `GET` | `/api/billing/boutique/summary` | `billing` | `src/modules/billing/billing.route.js` |
+| `POST` | `/api/boutiques/` | `boutique` | `src/modules/boutique/boutique.route.js` |
+| `GET` | `/api/boutiques/public` | `boutique` | `src/modules/boutique/boutique.route.js` |
+| `GET` | `/api/boutiques/public/:id` | `boutique` | `src/modules/boutique/boutique.route.js` |
+| `GET` | `/api/boutiques/public/:id/products` | `boutique` | `src/modules/boutique/boutique.route.js` |
 | `GET` | `/api/boxes/` | `boxes` | `src/modules/boxes/box.route.js` |
 | `GET` | `/api/boxes/` | `boxes` | `src/modules/boxes/box.route.js` |
 | `POST` | `/api/boxes/` | `boxes` | `src/modules/boxes/box.route.js` |
@@ -49,6 +53,7 @@ Generated at: `2026-02-24T23:13:03.435Z`
 | `PATCH` | `/api/products/:id/promotion` | `products` | `src/modules/products/product.route.js` |
 | `PATCH` | `/api/products/:id/stock` | `products` | `src/modules/products/product.route.js` |
 | `GET` | `/api/products/:id/stock-movements` | `products` | `src/modules/products/product.route.js` |
+| `GET` | `/api/products/public/promotions` | `products` | `src/modules/products/product.route.js` |
 | `GET` | `/api/sales/boutique/delivery-capacity` | `sales` | `src/modules/sales/sale.routes.js` |
 | `GET` | `/api/sales/boutique/delivery-settings` | `sales` | `src/modules/sales/sale.routes.js` |
 | `PATCH` | `/api/sales/boutique/delivery-settings` | `sales` | `src/modules/sales/sale.routes.js` |
