@@ -67,9 +67,16 @@ const toManagementActivityDTO = (activity) => ({
 class ActivityController {
   async listPublicUpcoming(req, res, next) {
     try {
-      const limit = Number(req.query.limit) || 8;
-      const activities = await activityService.listPublicUpcoming(limit);
-      res.json(activities.map(toPublicActivityDTO));
+      const parsedPage = Number(req.query.page) || 1;
+      const parsedLimit = Number(req.query.limit) || 10;
+      const page = Math.max(1, parsedPage);
+      const limit = Math.max(1, Math.min(10, parsedLimit));
+
+      const result = await activityService.listPublicUpcoming(page, limit);
+      res.json({
+        ...result,
+        data: result.data.map(toPublicActivityDTO),
+      });
     } catch (error) {
       next(error);
     }
