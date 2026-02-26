@@ -11,7 +11,8 @@ const {
   validateBoutiqueOrderUpdate,
   validateDeliverySettingsQuery,
   validateDeliverySettingsUpdate,
-  validateCapacityCalendarQuery
+  validateCapacityCalendarQuery,
+  validateBoutiqueDashboardQuery
 } = require("./sale.validation");
 
 const router = express.Router();
@@ -28,6 +29,12 @@ router.patch(
   authorize("BOUTIQUE", "ADMIN"),
   validateBoutiqueOrderUpdate,
   saleController.updateBoutiqueOrder
+);
+router.get(
+  "/boutique/dashboard",
+  authorize("BOUTIQUE", "ADMIN"),
+  validateBoutiqueDashboardQuery,
+  saleController.getBoutiqueDashboard
 );
 router.get(
   "/boutique/delivery-settings",

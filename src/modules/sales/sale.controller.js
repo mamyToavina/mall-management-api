@@ -198,6 +198,24 @@ class SaleController {
       sendError(res, error);
     }
   }
+
+  async getBoutiqueDashboard(req, res) {
+    try {
+      const result = await saleService.getBoutiqueDashboard({
+        userId: req.user.id,
+        role: req.user.role,
+        boutiqueId: req.query.boutiqueId,
+        days: req.query.days
+      });
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      sendError(res, error);
+    }
+  }
 }
 
 module.exports = new SaleController();

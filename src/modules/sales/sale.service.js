@@ -4,6 +4,7 @@ const Sale = require("./sale.model");
 const User = require("../users/user.model");
 const Product = require("../products/product.model");
 const Boutique = require("../boutique/boutique.model");
+const BoutiqueReview = require("../reviews/review.model");
 const Contract = require("../contracts/contract.model");
 const BillingTrace = require("../billing/billing-trace.model");
 const billingService = require("../billing/billing.service");
@@ -388,6 +389,273 @@ class SaleService {
         to: toDate.toISOString()
       },
       days
+    };
+  }
+
+  normalizeDashboardDays(days) {
+    const parsed = Number(days);
+    if (!Number.isFinite(parsed)) return 30;
+    const safe = Math.trunc(parsed);
+    return Math.min(180, Math.max(7, safe));
+  }
+
+  computeBoutiqueSaleRevenue(sale, boutiqueId) {
+    const boutiqueKey = String(boutiqueId);
+    const items = Array.isArray(sale?.items)
+      ? sale.items.filter((item) => String(item?.boutique) === boutiqueKey)
+      : [];
+
+    const fromLines = roundMoney(
+      items.reduce((sum, item) => {
+        const lineGrandTotal = Number(item?.lineGrandTotal);
+        if (Number.isFinite(lineGrandTotal)) return sum + lineGrandTotal;
+
+        const lineTotal = Number(item?.lineTotal) || 0;
+        const lineTax = Number(item?.lineTax);
+        return sum + lineTotal + (Number.isFinite(lineTax) ? lineTax : 0);
+      }, 0)
+    );
+
+    if (fromLines > 0) return fromLines;
+
+    const breakdown = Array.isArray(sale?.boutiqueBreakdown)
+      ? sale.boutiqueBreakdown.find((entry) => String(entry?.boutique) === boutiqueKey)
+      : null;
+
+    return roundMoney(Number(breakdown?.subtotal) || 0);
+  }
+
+  async getBoutiqueDashboard({ userId, role, boutiqueId = null, days = 30 }) {
+    const boutique = await this.resolveBoutiqueForActor({ userId, role, boutiqueId });
+    const safeDays = this.normalizeDashboardDays(days);
+    const periodEnd = new Date();
+    const periodStart = startOfDay(addDays(periodEnd, -(safeDays - 1)));
+    const boutiqueKey = String(boutique._id);
+
+    const dayBuckets = new Map();
+    let cursor = new Date(periodStart);
+    while (cursor <= periodEnd) {
+      const key = cursor.toISOString().slice(0, 10);
+      dayBuckets.set(key, { revenue: 0, orders: 0 });
+      cursor = addDays(cursor, 1);
+    }
+
+    const statuses = [
+      "SCHEDULED",
+      "PREPARING",
+      "READY",
+      "OUT_FOR_DELIVERY",
+      "DELIVERED",
+      "REJECTED"
+    ];
+    const statusCounts = new Map(statuses.map((status) => [status, 0]));
+
+    const sales = await Sale.find({
+      placedAt: { $gte: periodStart, $lte: periodEnd },
+      boutiqueBreakdown: { $elemMatch: { boutique: boutique._id } }
+    })
+      .select("reference buyerSnapshot placedAt boutiqueBreakdown items deliveryContact")
+      .sort({ placedAt: -1 })
+      .lean();
+
+    const topProductsMap = new Map();
+    const recentOrders = [];
+    let revenueTotal = 0;
+
+    for (const sale of sales) {
+      const boutiqueOrder = Array.isArray(sale.boutiqueBreakdown)
+        ? sale.boutiqueBreakdown.find((entry) => String(entry.boutique) === boutiqueKey)
+        : null;
+      if (!boutiqueOrder) continue;
+
+      const revenue = this.computeBoutiqueSaleRevenue(sale, boutique._id);
+      revenueTotal = roundMoney(revenueTotal + revenue);
+
+      const dateKey = new Date(sale.placedAt).toISOString().slice(0, 10);
+      const bucket = dayBuckets.get(dateKey);
+      if (bucket) {
+        bucket.revenue = roundMoney(bucket.revenue + revenue);
+        bucket.orders += 1;
+      }
+
+      const currentCount = statusCounts.get(boutiqueOrder.fulfillmentStatus) || 0;
+      statusCounts.set(boutiqueOrder.fulfillmentStatus, currentCount + 1);
+
+      const boutiqueItems = Array.isArray(sale.items)
+        ? sale.items.filter((item) => String(item.boutique) === boutiqueKey)
+        : [];
+
+      for (const item of boutiqueItems) {
+        const productId = String(item.product);
+        const lineRevenue = roundMoney(
+          Number.isFinite(Number(item.lineGrandTotal))
+            ? Number(item.lineGrandTotal)
+            : (Number(item.lineTotal) || 0) + (Number(item.lineTax) || 0)
+        );
+        const current = topProductsMap.get(productId) || {
+          productId,
+          name: item.productName || "Produit",
+          imageUrl: item.imageUrl || null,
+          quantity: 0,
+          revenue: 0,
+          currency: item.currency || "MGA"
+        };
+        current.quantity += Number(item.quantity) || 0;
+        current.revenue = roundMoney(current.revenue + lineRevenue);
+        topProductsMap.set(productId, current);
+      }
+
+      if (recentOrders.length < 5) {
+        recentOrders.push({
+          id: String(sale._id),
+          reference: sale.reference,
+          placedAt: sale.placedAt,
+          customerName:
+            [sale.buyerSnapshot?.firstName, sale.buyerSnapshot?.lastName]
+              .filter(Boolean)
+              .join(" ")
+              .trim() ||
+            sale.buyerSnapshot?.pseudo ||
+            sale.buyerSnapshot?.email ||
+            "-",
+          fulfillmentStatus: boutiqueOrder.fulfillmentStatus,
+          deliveryDate: boutiqueOrder.deliveryDate,
+          subtotal: roundMoney(Number(boutiqueOrder.subtotal) || 0),
+          currency: boutiqueOrder.currency || "MGA"
+        });
+      }
+    }
+
+    const ordersTotal = sales.length;
+    const deliveredOrders = statusCounts.get("DELIVERED") || 0;
+    const rejectedOrders = statusCounts.get("REJECTED") || 0;
+    const pendingOrders =
+      (statusCounts.get("SCHEDULED") || 0) +
+      (statusCounts.get("PREPARING") || 0) +
+      (statusCounts.get("READY") || 0) +
+      (statusCounts.get("OUT_FOR_DELIVERY") || 0);
+    const averageOrderValue = ordersTotal > 0 ? roundMoney(revenueTotal / ordersTotal) : 0;
+    const deliverySuccessRate = ordersTotal > 0 ? roundMoney((deliveredOrders * 100) / ordersTotal) : 0;
+    const rejectionRate = ordersTotal > 0 ? roundMoney((rejectedOrders * 100) / ordersTotal) : 0;
+
+    const [inventoryCounts, reviewStats] = await Promise.all([
+      Promise.all([
+        Product.countDocuments({ boutique: boutique._id }),
+        Product.countDocuments({ boutique: boutique._id, status: "ACTIVE" }),
+        Product.countDocuments({ boutique: boutique._id, isPublished: true }),
+        Product.countDocuments({
+          boutique: boutique._id,
+          trackStock: true,
+          $expr: { $lte: ["$stockQuantity", "$lowStockThreshold"] }
+        })
+      ]),
+      BoutiqueReview.aggregate([
+        { $match: { boutique: boutique._id } },
+        {
+          $group: {
+            _id: null,
+            reviewsCount: { $sum: 1 },
+            averageRating: { $avg: "$rating" }
+          }
+        }
+      ])
+    ]);
+
+    let finance = {
+      rentRemaining: 0,
+      electricityRemaining: 0,
+      penaltiesRemaining: 0,
+      totalOutstanding: 0,
+      commissionTotal: 0,
+      currency: "MGA"
+    };
+
+    try {
+      const summary = await billingService.getMyBillingSummary(userId, {});
+      const rentRemaining = roundMoney(summary?.dues?.rent?.remaining || 0);
+      const electricityRemaining = roundMoney(summary?.dues?.electricity?.remaining || 0);
+      const penaltiesRemaining = roundMoney(summary?.penalties?.remaining || 0);
+      finance = {
+        rentRemaining,
+        electricityRemaining,
+        penaltiesRemaining,
+        totalOutstanding: roundMoney(rentRemaining + electricityRemaining + penaltiesRemaining),
+        commissionTotal: roundMoney(summary?.commission?.totalCommissionAmount || 0),
+        currency: "MGA"
+      };
+    } catch (error) {
+      finance = {
+        ...finance,
+        warning: "Billing summary unavailable"
+      };
+    }
+
+    const [totalProducts, activeProducts, publishedProducts, lowStockProducts] = inventoryCounts;
+    const firstReview = reviewStats[0] || { reviewsCount: 0, averageRating: 0 };
+
+    const dailyRevenue = [...dayBuckets.entries()].map(([date, values]) => ({
+      date,
+      revenue: values.revenue,
+      orders: values.orders
+    }));
+
+    const statusLabels = {
+      SCHEDULED: "Planifiees",
+      PREPARING: "Preparation",
+      READY: "Pretes",
+      OUT_FOR_DELIVERY: "En livraison",
+      DELIVERED: "Livrees",
+      REJECTED: "Rejetees"
+    };
+
+    const statusBreakdown = statuses.map((status) => ({
+      status,
+      label: statusLabels[status],
+      count: statusCounts.get(status) || 0
+    }));
+
+    const topProducts = [...topProductsMap.values()]
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    return {
+      boutique: {
+        id: String(boutique._id),
+        name: boutique.name
+      },
+      period: {
+        from: periodStart.toISOString(),
+        to: periodEnd.toISOString(),
+        days: safeDays
+      },
+      kpis: {
+        revenueTotal,
+        ordersTotal,
+        averageOrderValue,
+        pendingOrders,
+        deliveredOrders,
+        rejectedOrders,
+        deliverySuccessRate,
+        rejectionRate,
+        currency: "MGA"
+      },
+      finance,
+      inventory: {
+        totalProducts,
+        activeProducts,
+        publishedProducts,
+        lowStockProducts
+      },
+      reputation: {
+        averageRating: Math.round((Number(firstReview.averageRating || 0) + Number.EPSILON) * 10) / 10,
+        reviewsCount: Number(firstReview.reviewsCount || 0)
+      },
+      charts: {
+        dailyRevenue,
+        statusBreakdown,
+        topProducts
+      },
+      recentOrders
     };
   }
 
