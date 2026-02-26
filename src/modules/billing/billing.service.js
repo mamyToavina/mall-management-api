@@ -66,8 +66,19 @@ const computeDueDateFromContract = (contractStartDate, month, year) => {
   if (!contractStartDate) return null;
   const start = new Date(contractStartDate);
   if (Number.isNaN(start.getTime())) return null;
-  const day = clampDayToMonth(year, month, start.getDate());
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
+
+  const isFirstContractMonth =
+    start.getFullYear() === Number(year) && start.getMonth() + 1 === Number(month);
+
+  if (isFirstContractMonth) {
+    // First month: auto-debit is allowed from contract start date.
+    const day = clampDayToMonth(year, month, start.getDate());
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+
+  // Following months: auto-debit at end of month if unpaid.
+  const endDay = new Date(year, month, 0).getDate();
+  return new Date(year, month - 1, endDay, 23, 59, 59, 999);
 };
 
 const computeLateMonths = (dueDate, now = new Date()) => {
@@ -83,6 +94,13 @@ const computePenaltyAmount = (baseFee, factor, monthsLate) => {
   if (!Number.isFinite(baseFee) || baseFee <= 0 || monthsLate <= 0) return 0;
   const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
   return roundMoney(baseFee * Math.pow(safeFactor, monthsLate - 1));
+};
+
+const hasReachedDueDate = (dueDate, now = new Date()) => {
+  if (!dueDate) return false;
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return false;
+  return now.getTime() >= due.getTime();
 };
 
 class BillingService {
@@ -359,6 +377,7 @@ class BillingService {
       return { settledAmount: 0, remainingCredit: creditBefore };
     }
 
+    const now = new Date();
     for (const cycle of cycles) {
       const rentLine = this.summarizeLine(cycle.rentDue, cycle.rentAutoPaid, cycle.rentManualPaid);
       const electricityLine = this.summarizeLine(
@@ -372,7 +391,7 @@ class BillingService {
         activeContract,
         rentLine,
         electricityLine,
-        now: new Date()
+        now
       });
 
       await this.applyAutoDebit({
@@ -386,27 +405,31 @@ class BillingService {
         session
       });
 
-      await this.applyAutoDebit({
-        cycle,
-        ownerUser,
-        line: 'RENT',
-        category: 'RENT',
-        traceReason: `Prelevement automatique loyer (${trigger})`,
-        referenceLabel: `LOYER-${cycle.month}-${cycle.year}`,
-        dueDate: cycle.rentDueDate,
-        session
-      });
+      if (hasReachedDueDate(cycle.rentDueDate, now)) {
+        await this.applyAutoDebit({
+          cycle,
+          ownerUser,
+          line: 'RENT',
+          category: 'RENT',
+          traceReason: `Prelevement automatique loyer (${trigger})`,
+          referenceLabel: `LOYER-${cycle.month}-${cycle.year}`,
+          dueDate: cycle.rentDueDate,
+          session
+        });
+      }
 
-      await this.applyAutoDebit({
-        cycle,
-        ownerUser,
-        line: 'ELECTRICITY',
-        category: 'ELECTRICITY',
-        traceReason: `Prelevement automatique electricite (${trigger})`,
-        referenceLabel: `ELECTRICITE-${cycle.month}-${cycle.year}`,
-        dueDate: cycle.electricityDueDate,
-        session
-      });
+      if (hasReachedDueDate(cycle.electricityDueDate, now)) {
+        await this.applyAutoDebit({
+          cycle,
+          ownerUser,
+          line: 'ELECTRICITY',
+          category: 'ELECTRICITY',
+          traceReason: `Prelevement automatique electricite (${trigger})`,
+          referenceLabel: `ELECTRICITE-${cycle.month}-${cycle.year}`,
+          dueDate: cycle.electricityDueDate,
+          session
+        });
+      }
 
       if (session) {
         await cycle.save({ session });
