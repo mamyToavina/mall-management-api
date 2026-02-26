@@ -1,6 +1,12 @@
 const express = require('express');
 const { createTenant } = require('./admin.controller');
-const { getContracts, patchContractStatus } = require('../contracts/contract.controller');
+const {
+  getContracts,
+  patchContractStatus,
+  getAdminRenewalRequests,
+  approveAdminRenewalRequest,
+  rejectAdminRenewalRequest
+} = require('../contracts/contract.controller');
 const { readGeneralSettings, updateGeneralSettings } = require('../settings/settings.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/role.middleware');
@@ -26,6 +32,27 @@ router.patch(
   protect,
   authorize('ADMIN'),
   patchContractStatus
+);
+
+router.get(
+  '/contract-renewals',
+  protect,
+  authorize('ADMIN'),
+  getAdminRenewalRequests
+);
+
+router.post(
+  '/contract-renewals/:id/approve',
+  protect,
+  authorize('ADMIN'),
+  approveAdminRenewalRequest
+);
+
+router.post(
+  '/contract-renewals/:id/reject',
+  protect,
+  authorize('ADMIN'),
+  rejectAdminRenewalRequest
 );
 
 router.get(
