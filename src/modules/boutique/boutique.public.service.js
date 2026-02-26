@@ -69,7 +69,10 @@ class BoutiquePublicService {
       query.name = { $regex: String(search).trim(), $options: 'i' };
     }
 
-    const boutiques = await Boutique.find(query).sort({ updatedAt: -1 }).limit(parsedLimit).lean();
+    const [boutiques, total] = await Promise.all([
+      Boutique.find(query).sort({ updatedAt: -1 }).limit(parsedLimit).lean(),
+      Boutique.countDocuments(query)
+    ]);
     const boutiqueIds = boutiques.map((item) => item._id);
     const boxIds = boutiques.map((item) => item.box).filter(Boolean);
 
@@ -194,7 +197,7 @@ class BoutiquePublicService {
     return {
       data,
       meta: {
-        total: data.length,
+        total,
         limit: parsedLimit
       }
     };

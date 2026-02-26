@@ -9,6 +9,7 @@ const activityRoutes = require('./modules/activities/activity.routes');
 const saleRoutes = require('./modules/sales/sale.routes');
 const boutiqueRoutes = require('./modules/boutique/boutique.route');
 const reviewRoutes = require('./modules/reviews/review.routes');
+const settingsRoutes = require('./modules/settings/settings.routes');
 
 const userRoutes = require(path.resolve(__dirname, './modules/users/user.routes.js'));
 const creditRoutes = require(path.resolve(__dirname, './modules/credit/credit.routes.js'));
@@ -26,5 +27,6 @@ router.use('/credit', creditRoutes);
 router.use('/activities', activityRoutes);
 router.use('/sales', saleRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/settings', settingsRoutes);
 
 module.exports = router;
