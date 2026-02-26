@@ -146,6 +146,21 @@ class BillingService {
     return boutique;
   }
 
+  async findContractForBillingPeriod(boutiqueId, month, year, session = null) {
+    const periodStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const periodEnd = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const query = Contract.findOne({
+      boutique: boutiqueId,
+      status: { $in: ['ACTIVE', 'SCHEDULED'] },
+      startDate: { $lte: periodEnd },
+      endDate: { $gte: periodStart }
+    }).sort({ endDate: -1 });
+
+    if (session) query.session(session);
+    return query;
+  }
+
   async findBoxByMeterNumber(meterNumber) {
     const exact = await Box.findOne({ electricityMeterNumber: meterNumber }).select('_id boutique electricityMeterNumber');
     if (exact) return exact;
@@ -388,7 +403,8 @@ class BillingService {
 
     const contractQuery = Contract.findOne({
       boutique: boutique._id,
-      status: 'ACTIVE'
+      status: { $in: ['ACTIVE', 'SCHEDULED'] },
+      startDate: { $lte: new Date() }
     }).sort({ endDate: -1 });
     if (session) contractQuery.session(session);
     const activeContract = await contractQuery;
@@ -522,10 +538,7 @@ class BillingService {
     const { month, year } = parseMonthYear(query);
     const now = new Date();
 
-    const activeContract = await Contract.findOne({
-      boutique: boutique._id,
-      status: 'ACTIVE'
-    }).sort({ endDate: -1 });
+    const activeContract = await this.findContractForBillingPeriod(boutique._id, month, year);
 
     const electricityInvoices = await ElectricityInvoice.find({
       boutique: boutique._id,

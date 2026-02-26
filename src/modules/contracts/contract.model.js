@@ -46,7 +46,7 @@ const contractSchema = new mongoose.Schema({
     required: true,
     min: 1,
     max: 1000,
-    default: 0
+    default: 1
   },
 
   terminationFee: {
@@ -73,7 +73,7 @@ const contractSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['ACTIVE', 'TERMINATED', 'EXPIRED'],
+    enum: ['ACTIVE', 'SCHEDULED', 'TERMINATED', 'EXPIRED'],
     default: 'ACTIVE',
     index: true
   }
@@ -90,6 +90,14 @@ contractSchema.pre('save', function(next) {
 
   if (this.endDate && this.startDate && this.endDate <= this.startDate) {
     return next(new Error("End date must be after start date"));
+  }
+
+  if (this.status === 'SCHEDULED' && this.endDate && this.endDate <= new Date()) {
+    this.status = 'EXPIRED';
+  }
+
+  if (this.status === 'SCHEDULED' && this.startDate && this.startDate <= new Date() && this.endDate > new Date()) {
+    this.status = 'ACTIVE';
   }
 
   if (this.status === 'ACTIVE' && this.endDate && this.endDate < new Date()) {
