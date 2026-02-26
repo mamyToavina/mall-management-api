@@ -762,9 +762,53 @@ class BillingService {
     return month < selectedMonth;
   }
 
+  ymFromDate(dateLike) {
+    const d = new Date(dateLike);
+    return {
+      month: d.getMonth() + 1,
+      year: d.getFullYear()
+    };
+  }
+
+  isYmBefore(a, b) {
+    if (a.year < b.year) return true;
+    if (a.year > b.year) return false;
+    return a.month < b.month;
+  }
+
+  isYmAfter(a, b) {
+    if (a.year > b.year) return true;
+    if (a.year < b.year) return false;
+    return a.month > b.month;
+  }
+
+  isCycleWithinYmRange(cycle, fromYm, toYm) {
+    const c = { month: Number(cycle.month), year: Number(cycle.year) };
+    return !this.isYmBefore(c, fromYm) && !this.isYmAfter(c, toYm);
+  }
+
   async listAdminBoutiqueMonthlySummary(query = {}) {
     const { month: selectedMonth, year: selectedYear } = parseMonthYear(query);
+    const selectedYm = { month: selectedMonth, year: selectedYear };
+    const periodStart = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0, 0);
+    const periodEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999);
+
     const boutiques = await Boutique.find({}).select('_id name owner');
+    const contracts = await Contract.find({
+      startDate: { $lte: periodEnd },
+      endDate: { $gte: periodStart }
+    })
+      .select('_id boutique startDate endDate status durationMonths')
+      .sort({ startDate: -1 })
+      .lean();
+
+    const contractByBoutique = new Map();
+    for (const contract of contracts) {
+      const bId = String(contract.boutique);
+      if (!contractByBoutique.has(bId)) {
+        contractByBoutique.set(bId, contract);
+      }
+    }
 
     const cycles = await BillingCycle.find({
       $or: [
@@ -783,11 +827,21 @@ class BillingService {
       cyclesByBoutique.set(key, bucket);
     }
 
-    const rows = boutiques.map((boutique) => {
+    const rows = boutiques
+      .map((boutique) => {
       const bId = String(boutique._id);
-      const allCycles = cyclesByBoutique.get(bId) || [];
+      const contract = contractByBoutique.get(bId);
+      if (!contract) {
+        return null;
+      }
 
-      const arrearsCycles = allCycles.filter((cycle) =>
+      const contractStartYm = this.ymFromDate(contract.startDate);
+      const allCycles = cyclesByBoutique.get(bId) || [];
+      const cyclesInContract = allCycles.filter((cycle) =>
+        this.isCycleWithinYmRange(cycle, contractStartYm, selectedYm)
+      );
+
+      const arrearsCycles = cyclesInContract.filter((cycle) =>
         this.isCycleBefore(
           { month: Number(cycle.month), year: Number(cycle.year) },
           { selectedMonth, selectedYear }
@@ -795,7 +849,9 @@ class BillingService {
       );
 
       const currentCycle =
-        allCycles.find((cycle) => Number(cycle.month) === selectedMonth && Number(cycle.year) === selectedYear) ||
+        cyclesInContract.find(
+          (cycle) => Number(cycle.month) === selectedMonth && Number(cycle.year) === selectedYear
+        ) ||
         null;
 
       const arrears = {
@@ -865,7 +921,7 @@ class BillingService {
             }
           },
           currentMonth: current,
-          cycles: allCycles.map((cycle) => ({
+          cycles: cyclesInContract.map((cycle) => ({
             month: cycle.month,
             year: cycle.year,
             rent: this.lineMetrics(cycle, 'RENT'),
@@ -874,7 +930,8 @@ class BillingService {
           }))
         }
       };
-    });
+    })
+      .filter(Boolean);
 
     rows.sort((a, b) => a.boutique.name.localeCompare(b.boutique.name, 'fr'));
     return rows;
