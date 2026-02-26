@@ -938,11 +938,37 @@ class BillingService {
   }
 
   async listAdminTraces(query = {}) {
-    const parsed = parseMonthYear(query);
-    const where = {
-      month: parsed.month,
-      year: parsed.year
-    };
+    const where = {};
+    const hasMonthYearFilter = query.month !== undefined || query.year !== undefined;
+    const hasDateFilter = !!query.fromDate || !!query.toDate;
+
+    if (hasMonthYearFilter) {
+      const parsed = parseMonthYear(query);
+      where.month = parsed.month;
+      where.year = parsed.year;
+    }
+
+    if (hasDateFilter) {
+      where.createdAt = {};
+      if (query.fromDate) {
+        const from = new Date(query.fromDate);
+        if (!Number.isNaN(from.getTime())) where.createdAt.$gte = from;
+      }
+      if (query.toDate) {
+        const to = new Date(query.toDate);
+        if (!Number.isNaN(to.getTime())) where.createdAt.$lte = to;
+      }
+      if (!where.createdAt.$gte && !where.createdAt.$lte) {
+        delete where.createdAt;
+      }
+    }
+
+    if (!hasMonthYearFilter && !hasDateFilter) {
+      const parsed = parseMonthYear({});
+      where.month = parsed.month;
+      where.year = parsed.year;
+    }
+
     if (query.boutiqueId) {
       where.boutique = query.boutiqueId;
     }
