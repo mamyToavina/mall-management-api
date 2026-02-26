@@ -592,7 +592,14 @@ class BillingService {
             id: activeContract._id,
             startDate: activeContract.startDate,
             endDate: activeContract.endDate,
+            durationMonths: activeContract.durationMonths,
             monthlyRent: activeContract.monthlyRent,
+            penaltyFee: activeContract.penaltyFee,
+            penaltyGrowthFactor: activeContract.penaltyGrowthFactor,
+            terminationFee: activeContract.terminationFee,
+            onlineSalesCommissionPercent: activeContract.onlineSalesCommissionPercent,
+            notes: activeContract.notes || '',
+            status: activeContract.status,
             remaining
           }
         : null,
