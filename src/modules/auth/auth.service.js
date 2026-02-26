@@ -3,6 +3,7 @@ const Boutique = require('../boutique/boutique.model');
 const { comparePassword } = require('../../utils/hash');
 const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
 const bcrypt = require('bcryptjs');
+const DEFAULT_MARKETING_TAGLINE = 'Profitez de nos meilleures offres en boutique et en ligne.';
 
 const loginService = async ({ email, password }) => {
   const user = await User.findOne({ email });
@@ -37,6 +38,12 @@ const parseBoolean = (value) => {
     if (value.toLowerCase() === 'false') return false;
   }
   return undefined;
+};
+
+const normalizeText = (value) => {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text || '';
 };
 
 const normalizeToken = (value) => {
@@ -81,6 +88,10 @@ const completeBoutiqueProfileService = async ({
   lastName,
   gender,
   boutiqueName,
+  activity,
+  offerings,
+  marketingTagline,
+  publicDescription,
   onlineSalesEnabled,
   logo
 }) => {
@@ -148,6 +159,17 @@ const completeBoutiqueProfileService = async ({
 
   const parsedOnlineSalesEnabled = parseBoolean(onlineSalesEnabled);
   boutique.name = boutiqueName;
+  const normalizedActivity = normalizeText(activity);
+  const normalizedOfferings = normalizeText(offerings);
+  const normalizedMarketingTagline = normalizeText(marketingTagline);
+  const normalizedPublicDescription = normalizeText(publicDescription);
+
+  if (normalizedActivity !== undefined) boutique.activity = normalizedActivity;
+  if (normalizedOfferings !== undefined) boutique.offerings = normalizedOfferings;
+  if (normalizedMarketingTagline !== undefined) {
+    boutique.marketingTagline = normalizedMarketingTagline || DEFAULT_MARKETING_TAGLINE;
+  }
+  if (normalizedPublicDescription !== undefined) boutique.publicDescription = normalizedPublicDescription;
   if (parsedOnlineSalesEnabled !== undefined) {
     boutique.onlineSalesEnabled = parsedOnlineSalesEnabled;
   }
@@ -173,6 +195,10 @@ const completeBoutiqueProfileService = async ({
       id: boutique._id,
       name: boutique.name,
       logo: boutique.logo,
+      activity: boutique.activity || '',
+      offerings: boutique.offerings || '',
+      marketingTagline: boutique.marketingTagline || '',
+      publicDescription: boutique.publicDescription || '',
       onlineSalesEnabled: boutique.onlineSalesEnabled,
       status: boutique.status
     }

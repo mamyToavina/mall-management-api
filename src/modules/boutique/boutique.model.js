@@ -42,6 +42,34 @@ const boutiqueSchema = new mongoose.Schema({
     type: String
   },
 
+  activity: {
+    type: String,
+    trim: true,
+    maxlength: 120,
+    default: ''
+  },
+
+  offerings: {
+    type: String,
+    trim: true,
+    maxlength: 240,
+    default: ''
+  },
+
+  marketingTagline: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: 'Profitez de nos meilleures offres en boutique et en ligne.'
+  },
+
+  publicDescription: {
+    type: String,
+    trim: true,
+    maxlength: 600,
+    default: ''
+  },
+
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
