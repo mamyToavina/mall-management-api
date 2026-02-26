@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Credit = require("./credit.model");
 const CreditAudit = require("./credit.audit.model");
 const User = require("../users/user.model");
+const billingService = require("../billing/billing.service");
 const { generateCreditCode, hashIdempotencyKey } = require("./credit.util");
 const { VALID_VALUES } = require("./credit.validation");
 
@@ -240,7 +241,15 @@ class CreditService {
         user.credit = (user.credit || 0) + credit.value;
         await user.save({ session });
 
-        responsePayload = { credit, newBalance: user.credit, replayed: false };
+        await billingService.autoSettleOwnerOutstanding({
+          ownerUserId: user._id,
+          session,
+          trigger: "CREDIT_RECHARGE"
+        });
+
+        const refreshedUser = await User.findById(userId).select("credit").session(session);
+
+        responsePayload = { credit, newBalance: refreshedUser?.credit || 0, replayed: false };
       });
     } catch (error) {
       if (error?.code === 11000) {

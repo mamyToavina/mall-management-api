@@ -1,6 +1,6 @@
 # API Endpoints (Auto-Generated)
 
-Generated at: `2026-02-25T12:09:59.594Z`
+Generated at: `2026-02-26T10:10:41.441Z`
 
 | Method | Path | Module | Source |
 |---|---|---|---|
@@ -11,8 +11,16 @@ Generated at: `2026-02-25T12:09:59.594Z`
 | `PATCH` | `/api/activities/:id` | `activities` | `src/modules/activities/activity.routes.js` |
 | `PATCH` | `/api/activities/:id/photo` | `activities` | `src/modules/activities/activity.routes.js` |
 | `GET` | `/api/activities/public/upcoming` | `activities` | `src/modules/activities/activity.routes.js` |
+| `GET` | `/api/admin/contracts` | `admin` | `src/modules/admin/admin.routes.js` |
+| `GET` | `/api/admin/contracts` | `admin` | `src/modules/admin/admin.routes.js` |
+| `PATCH` | `/api/admin/contracts/:id/status` | `admin` | `src/modules/admin/admin.routes.js` |
+| `PATCH` | `/api/admin/contracts/:id/status` | `admin` | `src/modules/admin/admin.routes.js` |
 | `POST` | `/api/admin/create-tenant` | `admin` | `src/modules/admin/admin.routes.js` |
 | `POST` | `/api/admin/create-tenant` | `admin` | `src/modules/admin/admin.routes.js` |
+| `GET` | `/api/admin/settings/general` | `admin` | `src/modules/admin/admin.routes.js` |
+| `GET` | `/api/admin/settings/general` | `admin` | `src/modules/admin/admin.routes.js` |
+| `PUT` | `/api/admin/settings/general` | `admin` | `src/modules/admin/admin.routes.js` |
+| `PUT` | `/api/admin/settings/general` | `admin` | `src/modules/admin/admin.routes.js` |
 | `POST` | `/api/auth/complete-boutique-profile` | `auth` | `src/modules/auth/auth.routes.js` |
 | `POST` | `/api/auth/complete-boutique-profile` | `auth` | `src/modules/auth/auth.routes.js` |
 | `POST` | `/api/auth/login` | `auth` | `src/modules/auth/auth.routes.js` |
@@ -22,9 +30,13 @@ Generated at: `2026-02-25T12:09:59.594Z`
 | `POST` | `/api/auth/refresh` | `auth` | `src/modules/auth/auth.routes.js` |
 | `POST` | `/api/auth/refresh` | `auth` | `src/modules/auth/auth.routes.js` |
 | `POST` | `/api/billing/admin/electricity-invoices/upload` | `billing` | `src/modules/billing/billing.route.js` |
+| `GET` | `/api/billing/admin/traces` | `billing` | `src/modules/billing/billing.route.js` |
 | `GET` | `/api/billing/boutique/invoices` | `billing` | `src/modules/billing/billing.route.js` |
 | `GET` | `/api/billing/boutique/invoices/:id` | `billing` | `src/modules/billing/billing.route.js` |
+| `POST` | `/api/billing/boutique/pay/electricity` | `billing` | `src/modules/billing/billing.route.js` |
+| `POST` | `/api/billing/boutique/pay/rent` | `billing` | `src/modules/billing/billing.route.js` |
 | `GET` | `/api/billing/boutique/summary` | `billing` | `src/modules/billing/billing.route.js` |
+| `GET` | `/api/billing/boutique/traces` | `billing` | `src/modules/billing/billing.route.js` |
 | `POST` | `/api/boutiques/` | `boutique` | `src/modules/boutique/boutique.route.js` |
 | `GET` | `/api/boutiques/public` | `boutique` | `src/modules/boutique/boutique.route.js` |
 | `GET` | `/api/boutiques/public/:id` | `boutique` | `src/modules/boutique/boutique.route.js` |

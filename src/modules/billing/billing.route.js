@@ -51,6 +51,20 @@ router.get(
   controller.getMyBillingSummary
 );
 
+router.post(
+  '/boutique/pay/rent',
+  protect,
+  authorize('BOUTIQUE'),
+  controller.payRentNow
+);
+
+router.post(
+  '/boutique/pay/electricity',
+  protect,
+  authorize('BOUTIQUE'),
+  controller.payElectricityNow
+);
+
 router.get(
   '/boutique/invoices',
   protect,
@@ -63,6 +77,20 @@ router.get(
   protect,
   authorize('BOUTIQUE'),
   controller.getMyInvoiceById
+);
+
+router.get(
+  '/boutique/traces',
+  protect,
+  authorize('BOUTIQUE'),
+  controller.listMyTraces
+);
+
+router.get(
+  '/admin/traces',
+  protect,
+  authorize('ADMIN'),
+  controller.listAdminTraces
 );
 
 module.exports = router;
