@@ -27,4 +27,19 @@ app.use(cookieParser());
 app.use('/api', routes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
+  const status = err.statusCode || 500;
+  const payload = {
+    message: err.message || 'Erreur interne du serveur.'
+  };
+
+  if (Array.isArray(err.errors) && err.errors.length > 0) {
+    payload.errors = err.errors;
+  }
+
+  return res.status(status).json(payload);
+});
+
 module.exports = app

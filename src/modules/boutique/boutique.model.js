@@ -49,6 +49,12 @@ const boutiqueSchema = new mongoose.Schema({
     index: true
   },
 
+  box: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Box',
+    index: true
+  },
+
   onlineSalesEnabled: {
     type: Boolean,
     default: false
