@@ -199,6 +199,18 @@ const validateCapacityCalendarQuery = [
   handleValidation
 ];
 
+const validateBoutiqueDashboardQuery = [
+  query("boutiqueId")
+    .optional()
+    .custom((value) => mongoose.Types.ObjectId.isValid(value))
+    .withMessage("boutiqueId must be a valid ObjectId"),
+  query("days")
+    .optional()
+    .isInt({ min: 7, max: 180 })
+    .withMessage("days must be between 7 and 180"),
+  handleValidation
+];
+
 module.exports = {
   validateCheckout,
   validateListMySales,
@@ -208,5 +220,6 @@ module.exports = {
   validateBoutiqueOrderUpdate,
   validateDeliverySettingsQuery,
   validateDeliverySettingsUpdate,
-  validateCapacityCalendarQuery
+  validateCapacityCalendarQuery,
+  validateBoutiqueDashboardQuery
 };
