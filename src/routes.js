@@ -1,23 +1,4 @@
-﻿/*const { Router } = require('express')
-const path = require('path');
-const authRoutes = require('./modules/auth/auth.routes');
-const adminRoutes = require('./modules/admin/admin.routes');
-const boxRoutes = require('./modules/boxes/box.route');
-
-const userRoutes = require(path.resolve(__dirname, './modules/users/user.routes.js'));
-const creditRoutes = require(path.resolve(__dirname, './modules/credit/credit.routes.js'));
-
-const router = Router()
-
-router.use('/auth', authRoutes);
-router.use('/users', userRoutes)
-router.use('/admin', adminRoutes);
-router.use('/boxes', boxRoutes);
-router.use('/credit', creditRoutes);
-
-module.exports = router*/
-
-const { Router } = require('express');
+﻿const { Router } = require('express');
 const path = require('path');
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -27,6 +8,7 @@ const billingRoutes = require('./modules/billing/billing.route');
 const activityRoutes = require('./modules/activities/activity.routes');
 const saleRoutes = require('./modules/sales/sale.routes');
 const boutiqueRoutes = require('./modules/boutique/boutique.route');
+const reviewRoutes = require('./modules/reviews/review.routes');
 
 const userRoutes = require(path.resolve(__dirname, './modules/users/user.routes.js'));
 const creditRoutes = require(path.resolve(__dirname, './modules/credit/credit.routes.js'));
@@ -43,7 +25,6 @@ router.use('/billing', billingRoutes);
 router.use('/credit', creditRoutes);
 router.use('/activities', activityRoutes);
 router.use('/sales', saleRoutes);
+router.use('/reviews', reviewRoutes);
 
 module.exports = router;
-
-
