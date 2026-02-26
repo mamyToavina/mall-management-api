@@ -738,6 +738,148 @@ class BillingService {
       .limit(300);
   }
 
+  lineMetrics(cycle, key) {
+    const map = {
+      RENT: { due: 'rentDue', auto: 'rentAutoPaid', manual: 'rentManualPaid' },
+      ELECTRICITY: { due: 'electricityDue', auto: 'electricityAutoPaid', manual: 'electricityManualPaid' },
+      PENALTY: { due: 'penaltyDue', auto: 'penaltyAutoPaid', manual: 'penaltyManualPaid' }
+    };
+
+    const cfg = map[key];
+    const due = Number(cycle?.[cfg.due]) || 0;
+    const paid = (Number(cycle?.[cfg.auto]) || 0) + (Number(cycle?.[cfg.manual]) || 0);
+    const remaining = roundMoney(Math.max(0, due - paid));
+    return {
+      due: roundMoney(due),
+      paid: roundMoney(paid),
+      remaining
+    };
+  }
+
+  isCycleBefore({ month, year }, { selectedMonth, selectedYear }) {
+    if (year < selectedYear) return true;
+    if (year > selectedYear) return false;
+    return month < selectedMonth;
+  }
+
+  async listAdminBoutiqueMonthlySummary(query = {}) {
+    const { month: selectedMonth, year: selectedYear } = parseMonthYear(query);
+    const boutiques = await Boutique.find({}).select('_id name owner');
+
+    const cycles = await BillingCycle.find({
+      $or: [
+        { year: { $lt: selectedYear } },
+        { year: selectedYear, month: { $lte: selectedMonth } }
+      ]
+    })
+      .sort({ year: 1, month: 1 })
+      .lean();
+
+    const cyclesByBoutique = new Map();
+    for (const cycle of cycles) {
+      const key = String(cycle.boutique);
+      const bucket = cyclesByBoutique.get(key) || [];
+      bucket.push(cycle);
+      cyclesByBoutique.set(key, bucket);
+    }
+
+    const rows = boutiques.map((boutique) => {
+      const bId = String(boutique._id);
+      const allCycles = cyclesByBoutique.get(bId) || [];
+
+      const arrearsCycles = allCycles.filter((cycle) =>
+        this.isCycleBefore(
+          { month: Number(cycle.month), year: Number(cycle.year) },
+          { selectedMonth, selectedYear }
+        )
+      );
+
+      const currentCycle =
+        allCycles.find((cycle) => Number(cycle.month) === selectedMonth && Number(cycle.year) === selectedYear) ||
+        null;
+
+      const arrears = {
+        rent: { due: 0, paid: 0, remaining: 0 },
+        electricity: { due: 0, paid: 0, remaining: 0 }
+      };
+
+      for (const cycle of arrearsCycles) {
+        const rent = this.lineMetrics(cycle, 'RENT');
+        const electricity = this.lineMetrics(cycle, 'ELECTRICITY');
+        arrears.rent.due += rent.due;
+        arrears.rent.paid += rent.paid;
+        arrears.rent.remaining += rent.remaining;
+        arrears.electricity.due += electricity.due;
+        arrears.electricity.paid += electricity.paid;
+        arrears.electricity.remaining += electricity.remaining;
+      }
+
+      const current = {
+        rent: this.lineMetrics(currentCycle, 'RENT'),
+        electricity: this.lineMetrics(currentCycle, 'ELECTRICITY'),
+        penalty: this.lineMetrics(currentCycle, 'PENALTY')
+      };
+
+      const totalDue = roundMoney(
+        arrears.rent.due +
+          arrears.electricity.due +
+          current.rent.due +
+          current.electricity.due +
+          current.penalty.due
+      );
+      const totalReceived = roundMoney(
+        arrears.rent.paid +
+          arrears.electricity.paid +
+          current.rent.paid +
+          current.electricity.paid +
+          current.penalty.paid
+      );
+      const totalRemaining = roundMoney(
+        arrears.rent.remaining +
+          arrears.electricity.remaining +
+          current.rent.remaining +
+          current.electricity.remaining +
+          current.penalty.remaining
+      );
+
+      return {
+        boutique: {
+          _id: boutique._id,
+          name: boutique.name
+        },
+        filter: { month: selectedMonth, year: selectedYear },
+        totals: {
+          due: totalDue,
+          received: totalReceived,
+          remaining: totalRemaining
+        },
+        details: {
+          arrearsOtherMonths: {
+            rent: {
+              ...arrears.rent,
+              cyclesCount: arrearsCycles.length
+            },
+            electricity: {
+              ...arrears.electricity,
+              cyclesCount: arrearsCycles.length
+            }
+          },
+          currentMonth: current,
+          cycles: allCycles.map((cycle) => ({
+            month: cycle.month,
+            year: cycle.year,
+            rent: this.lineMetrics(cycle, 'RENT'),
+            electricity: this.lineMetrics(cycle, 'ELECTRICITY'),
+            penalty: this.lineMetrics(cycle, 'PENALTY')
+          }))
+        }
+      };
+    });
+
+    rows.sort((a, b) => a.boutique.name.localeCompare(b.boutique.name, 'fr'));
+    return rows;
+  }
+
   async listAdminTraces(query = {}) {
     const parsed = parseMonthYear(query);
     const where = {
