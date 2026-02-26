@@ -211,6 +211,19 @@
         }
       }
     },
+    "/billing/admin/boutiques-summary": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/admin/boutiques-summary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/billing/admin/electricity-invoices/upload": {
       "post": {
         "tags": [
@@ -593,6 +606,56 @@
           "products"
         ],
         "summary": "GET /api/products/public/promotions",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/reviews/boutiques/:boutiqueId": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "GET /api/reviews/boutiques/:boutiqueId",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "POST /api/reviews/boutiques/:boutiqueId",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/reviews/me": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "GET /api/reviews/me",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/reviews/users/:userId": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "GET /api/reviews/users/:userId",
         "responses": {
           "200": {
             "description": "Success"
