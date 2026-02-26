@@ -99,6 +99,15 @@ class BillingController {
       next(error);
     }
   }
+
+  async getAdminDashboard(req, res, next) {
+    try {
+      const result = await billingService.getAdminDashboard(req.query);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new BillingController();

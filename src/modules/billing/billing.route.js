@@ -94,6 +94,13 @@ router.get(
 );
 
 router.get(
+  '/admin/dashboard',
+  protect,
+  authorize('ADMIN'),
+  controller.getAdminDashboard
+);
+
+router.get(
   '/admin/boutiques-summary',
   protect,
   authorize('ADMIN'),
