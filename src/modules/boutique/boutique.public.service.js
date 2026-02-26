@@ -138,6 +138,18 @@ class BoutiquePublicService {
       boxById = new Map(boxes.map((box) => [String(box._id), box]));
     }
 
+    let boxByBoutiqueId = new Map();
+    if (boutiqueIds.length) {
+      const boxesByBoutique = await Box.find({ boutique: { $in: boutiqueIds } })
+        .select('_id number floor boutique')
+        .lean();
+      boxByBoutiqueId = new Map(
+        boxesByBoutique
+          .filter((box) => box?.boutique)
+          .map((box) => [String(box.boutique), box])
+      );
+    }
+
     const data = boutiques.map((boutique) => {
       const stats = statsByBoutique.get(String(boutique._id)) || {
         productCount: 0,
@@ -151,13 +163,18 @@ class BoutiquePublicService {
       };
       const topCategory = stats.topCategory || '';
       const activity = String(boutique.activity || '').trim() || topCategory || 'Boutique partenaire';
-      const box = boutique.box ? boxById.get(String(boutique.box)) || null : null;
+      const box =
+        (boutique.box ? boxById.get(String(boutique.box)) || null : null) ||
+        boxByBoutiqueId.get(String(boutique._id)) ||
+        null;
 
       return {
         id: String(boutique._id),
         name: boutique.name,
         slogan: `Bienvenue chez ${boutique.name}`,
         activity,
+        boxNumber: box?.number || null,
+        boxFloor: Number.isFinite(Number(box?.floor)) ? Number(box.floor) : null,
         offerings: buildOfferingsText(boutique, topCategory),
         marketingTagline: buildMarketingTagline(boutique),
         locationDescription: buildLocationDescription(boutique.name, box),
@@ -193,7 +210,7 @@ class BoutiquePublicService {
 
     if (!boutique) return null;
 
-    const [products, reviewStats, box] = await Promise.all([
+    const [products, reviewStats, boxFromId, boxFromBoutique] = await Promise.all([
       Product.find({
         boutique: boutique._id,
         status: 'ACTIVE',
@@ -215,8 +232,10 @@ class BoutiquePublicService {
           }
         }
       ]),
-      boutique.box ? Box.findById(boutique.box).select('_id number floor').lean() : Promise.resolve(null)
+      boutique.box ? Box.findById(boutique.box).select('_id number floor').lean() : Promise.resolve(null),
+      Box.findOne({ boutique: boutique._id }).select('_id number floor').lean()
     ]);
+    const box = boxFromId || boxFromBoutique || null;
 
     const firstReviewStats = reviewStats[0] || { reviewsCount: 0, averageRating: 0 };
     const productCount = products.length;
@@ -231,6 +250,8 @@ class BoutiquePublicService {
       name: boutique.name,
       slogan: `Bienvenue chez ${boutique.name}`,
       activity,
+      boxNumber: box?.number || null,
+      boxFloor: Number.isFinite(Number(box?.floor)) ? Number(box.floor) : null,
       offerings: buildOfferingsText(boutique, topCategory),
       marketingTagline: buildMarketingTagline(boutique),
       locationDescription: buildLocationDescription(boutique.name, box),
