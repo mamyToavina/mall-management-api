@@ -44,6 +44,52 @@ class BillingController {
       next(error);
     }
   }
+
+  async payRentNow(req, res, next) {
+    try {
+      const result = await billingService.payLineNow({
+        userId: req.user.id,
+        query: req.query,
+        category: 'RENT',
+        amount: req.body?.amount
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async payElectricityNow(req, res, next) {
+    try {
+      const result = await billingService.payLineNow({
+        userId: req.user.id,
+        query: req.query,
+        category: 'ELECTRICITY',
+        amount: req.body?.amount
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listMyTraces(req, res, next) {
+    try {
+      const traces = await billingService.listMyTraces(req.user.id, req.query);
+      res.json(traces);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listAdminTraces(req, res, next) {
+    try {
+      const traces = await billingService.listAdminTraces(req.query);
+      res.json(traces);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new BillingController();

@@ -96,12 +96,62 @@
         }
       }
     },
+    "/admin/contracts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/admin/contracts",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/admin/contracts/:id/status": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "PATCH /api/admin/contracts/:id/status",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/admin/create-tenant": {
       "post": {
         "tags": [
           "admin"
         ],
         "summary": "POST /api/admin/create-tenant",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/admin/settings/general": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/admin/settings/general",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "PUT /api/admin/settings/general",
         "responses": {
           "200": {
             "description": "Success"
@@ -174,6 +224,19 @@
         }
       }
     },
+    "/billing/admin/traces": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/admin/traces",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/billing/boutique/invoices": {
       "get": {
         "tags": [
@@ -200,12 +263,51 @@
         }
       }
     },
+    "/billing/boutique/pay/electricity": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "POST /api/billing/boutique/pay/electricity",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/boutique/pay/rent": {
+      "post": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "POST /api/billing/boutique/pay/rent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
     "/billing/boutique/summary": {
       "get": {
         "tags": [
           "billing"
         ],
         "summary": "GET /api/billing/boutique/summary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/billing/boutique/traces": {
+      "get": {
+        "tags": [
+          "billing"
+        ],
+        "summary": "GET /api/billing/boutique/traces",
         "responses": {
           "200": {
             "description": "Success"

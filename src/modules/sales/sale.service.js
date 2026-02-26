@@ -4,6 +4,9 @@ const Sale = require("./sale.model");
 const User = require("../users/user.model");
 const Product = require("../products/product.model");
 const Boutique = require("../boutique/boutique.model");
+const Contract = require("../contracts/contract.model");
+const BillingTrace = require("../billing/billing-trace.model");
+const billingService = require("../billing/billing.service");
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -477,7 +480,6 @@ class SaleService {
         let taxTotal = 0;
         let quantityTotal = 0;
         const boutiqueAccumulator = new Map();
-        const ownerCreditIncrements = new Map();
 
         for (const item of normalizedItems) {
           const product = productsById.get(item.productId);
@@ -540,6 +542,15 @@ class SaleService {
           taxTotal = roundMoney(taxTotal + lineTax);
           quantityTotal += item.quantity;
 
+          const ownerId = boutique.owner ? String(boutique.owner) : null;
+          if (!ownerId) {
+            throw new SaleServiceError(
+              `Proprietaire boutique introuvable: ${boutique.name}`,
+              409,
+              "BOUTIQUE_OWNER_NOT_FOUND"
+            );
+          }
+
           lines.push({
             product: product._id,
             boutique: product.boutique,
@@ -558,28 +569,51 @@ class SaleService {
           const current = boutiqueAccumulator.get(key) || {
             boutique: product.boutique,
             boutiqueName: boutique.name,
+            ownerId,
             itemCount: 0,
             quantityTotal: 0,
             subtotal: 0,
+            grossTotal: 0,
             currency: product.currency || "MGA"
           };
           current.itemCount += 1;
           current.quantityTotal += item.quantity;
           current.subtotal = roundMoney(current.subtotal + lineTotal);
+          current.grossTotal = roundMoney(current.grossTotal + lineGrandTotal);
           boutiqueAccumulator.set(key, current);
+        }
 
-          const ownerId = boutique.owner ? String(boutique.owner) : null;
-          if (!ownerId) {
-            throw new SaleServiceError(
-              `Proprietaire boutique introuvable: ${boutique.name}`,
-              409,
-              "BOUTIQUE_OWNER_NOT_FOUND"
-            );
-          }
-          ownerCreditIncrements.set(
-            ownerId,
-            roundMoney((ownerCreditIncrements.get(ownerId) || 0) + lineGrandTotal)
+        const boutiqueIdsForContract = [...boutiqueAccumulator.values()].map((entry) => entry.boutique);
+        const activeContracts = await Contract.find({
+          boutique: { $in: boutiqueIdsForContract },
+          status: "ACTIVE"
+        }).session(session);
+        const contractByBoutique = new Map(
+          activeContracts.map((contract) => [String(contract.boutique), contract])
+        );
+
+        const ownerNetCreditIncrements = new Map();
+        const commissionEntries = [];
+        for (const entry of boutiqueAccumulator.values()) {
+          const contract = contractByBoutique.get(String(entry.boutique));
+          const commissionRate = Number(contract?.onlineSalesCommissionPercent) || 0;
+          const saleAmount = roundMoney(entry.grossTotal || 0);
+          const commissionAmount = roundMoney((saleAmount * commissionRate) / 100);
+          const netAmount = roundMoney(Math.max(0, saleAmount - commissionAmount));
+
+          ownerNetCreditIncrements.set(
+            entry.ownerId,
+            roundMoney((ownerNetCreditIncrements.get(entry.ownerId) || 0) + netAmount)
           );
+
+          commissionEntries.push({
+            boutiqueId: entry.boutique,
+            ownerId: entry.ownerId,
+            boutiqueName: entry.boutiqueName,
+            saleAmount,
+            commissionRate,
+            commissionAmount
+          });
         }
 
         const grandTotal = roundMoney(subtotal + taxTotal);
@@ -594,7 +628,7 @@ class SaleService {
         user.credit = roundMoney(currentCredit - grandTotal);
         await user.save({ session });
 
-        for (const [ownerId, amount] of ownerCreditIncrements.entries()) {
+        for (const [ownerId, amount] of ownerNetCreditIncrements.entries()) {
           const owner = await User.findByIdAndUpdate(ownerId, { $inc: { credit: amount } }, { session });
           if (!owner) {
             throw new SaleServiceError(
@@ -603,6 +637,14 @@ class SaleService {
               "SELLER_NOT_FOUND"
             );
           }
+        }
+
+        for (const ownerId of ownerNetCreditIncrements.keys()) {
+          await billingService.autoSettleOwnerOutstanding({
+            ownerUserId: ownerId,
+            session,
+            trigger: "SALE_CREDIT_INFLOW"
+          });
         }
 
         const boutiqueBreakdown = [];
@@ -659,6 +701,44 @@ class SaleService {
           ],
           { session }
         );
+
+        const saleDoc = sale[0];
+        if (commissionEntries.length > 0) {
+          const createdAt = saleDoc.placedAt || new Date();
+          const month = createdAt.getMonth() + 1;
+          const year = createdAt.getFullYear();
+
+          await BillingTrace.insertMany(
+            commissionEntries.map((entry) => ({
+              boutique: entry.boutiqueId,
+              ownerUser: entry.ownerId,
+              month,
+              year,
+              category: "COMMISSION",
+              action: "SALE_COMMISSION",
+              automatic: true,
+              amount: entry.saleAmount,
+              paidAmount: entry.commissionAmount,
+              remainingAmount: 0,
+              status: "APPLIED",
+              reason: "Commission prelevee automatiquement a la vente",
+              referenceType: "SALE",
+              referenceId: saleDoc._id,
+              referenceLabel: saleDoc.reference,
+              details: {
+                saleReference: saleDoc.reference,
+                saleDate: createdAt,
+                boutiqueName: entry.boutiqueName,
+                saleAmount: entry.saleAmount,
+                commissionRate: entry.commissionRate,
+                commissionAmount: entry.commissionAmount,
+                clientName: [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || user.pseudo || "-",
+                clientEmail: user.email || "-"
+              }
+            })),
+            { session }
+          );
+        }
 
         response = { sale: sale[0], replayed: false };
       });
