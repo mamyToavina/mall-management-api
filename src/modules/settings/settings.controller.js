@@ -105,6 +105,19 @@ const readGeneralSettings = async (req, res, next) => {
   }
 };
 
+const readPublicGeneralSettings = async (req, res, next) => {
+  try {
+    const settings = await getGeneralSettings();
+    return res.json({
+      mallAddress: settings.mallAddress ?? '',
+      mallLatitude: settings.mallLatitude ?? 0,
+      mallLongitude: settings.mallLongitude ?? 0
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const updateGeneralSettings = async (req, res, next) => {
   try {
     const { payload, errors } = validateSettingsPayload(req.body || {});
@@ -124,5 +137,6 @@ const updateGeneralSettings = async (req, res, next) => {
 
 module.exports = {
   readGeneralSettings,
+  readPublicGeneralSettings,
   updateGeneralSettings
 };
