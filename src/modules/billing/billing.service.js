@@ -104,6 +104,27 @@ const hasReachedDueDate = (dueDate, now = new Date()) => {
 };
 
 class BillingService {
+  parseDateBoundary(input, endOfDay = false) {
+    if (!input) return null;
+
+    const raw = String(input).trim();
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (dateOnlyMatch) {
+      const year = Number(dateOnlyMatch[1]);
+      const month = Number(dateOnlyMatch[2]);
+      const day = Number(dateOnlyMatch[3]);
+      if (endOfDay) return new Date(year, month - 1, day, 23, 59, 59, 999);
+      return new Date(year, month - 1, day, 0, 0, 0, 0);
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    if (endOfDay) {
+      parsed.setHours(23, 59, 59, 999);
+    }
+    return parsed;
+  }
+
   async resolveBoutiqueFromUser(userId) {
     const user = await User.findById(userId).select('_id role boutique');
     if (!user) throw new Error('Utilisateur introuvable');
@@ -951,12 +972,12 @@ class BillingService {
     if (hasDateFilter) {
       where.createdAt = {};
       if (query.fromDate) {
-        const from = new Date(query.fromDate);
-        if (!Number.isNaN(from.getTime())) where.createdAt.$gte = from;
+        const from = this.parseDateBoundary(query.fromDate, false);
+        if (from) where.createdAt.$gte = from;
       }
       if (query.toDate) {
-        const to = new Date(query.toDate);
-        if (!Number.isNaN(to.getTime())) where.createdAt.$lte = to;
+        const to = this.parseDateBoundary(query.toDate, true);
+        if (to) where.createdAt.$lte = to;
       }
       if (!where.createdAt.$gte && !where.createdAt.$lte) {
         delete where.createdAt;
