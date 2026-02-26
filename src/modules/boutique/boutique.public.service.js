@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Boutique = require('./boutique.model');
 const Product = require('../products/product.model');
+const BoutiqueReview = require('../reviews/review.model');
 
 const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
 
@@ -22,6 +23,8 @@ const computeSellingPrice = (product, now = new Date()) => {
   if (typeof product.salePrice === 'number') return roundMoney(product.salePrice);
   return roundMoney(product.price);
 };
+
+const roundRating = (value) => Math.round(Number(value || 0) * 10) / 10;
 
 class BoutiquePublicService {
   async listPublicBoutiques({ limit = 24, search = '' } = {}) {
@@ -69,12 +72,41 @@ class BoutiquePublicService {
       statsByBoutique = grouped;
     }
 
+    const reviewStats = await BoutiqueReview.aggregate([
+      {
+        $match: {
+          boutique: { $in: boutiqueIds }
+        }
+      },
+      {
+        $group: {
+          _id: '$boutique',
+          reviewsCount: { $sum: 1 },
+          averageRating: { $avg: '$rating' }
+        }
+      }
+    ]);
+
+    const reviewStatsByBoutique = new Map(
+      reviewStats.map((item) => [
+        String(item._id),
+        {
+          reviewsCount: Number(item.reviewsCount || 0),
+          rating: roundRating(item.averageRating)
+        }
+      ])
+    );
+
     const data = boutiques.map((boutique) => {
       const stats = statsByBoutique.get(String(boutique._id)) || {
         productCount: 0,
         promotionCount: 0,
         topCategory: '',
         coverUrl: null
+      };
+      const reviews = reviewStatsByBoutique.get(String(boutique._id)) || {
+        reviewsCount: 0,
+        rating: 0
       };
 
       return {
@@ -83,8 +115,8 @@ class BoutiquePublicService {
         slogan: `Bienvenue chez ${boutique.name}`,
         activity: stats.topCategory || 'Boutique partenaire',
         description: 'Découvrez les offres disponibles dans cette boutique.',
-        rating: 0,
-        reviewsCount: 0,
+        rating: reviews.rating,
+        reviewsCount: reviews.reviewsCount,
         logoUrl: boutique.logo || null,
         coverUrl: stats.coverUrl,
         highlights: [
@@ -122,6 +154,22 @@ class BoutiquePublicService {
       .select('category images promotion price salePrice')
       .lean();
 
+    const reviewStats = await BoutiqueReview.aggregate([
+      {
+        $match: {
+          boutique: boutique._id
+        }
+      },
+      {
+        $group: {
+          _id: '$boutique',
+          reviewsCount: { $sum: 1 },
+          averageRating: { $avg: '$rating' }
+        }
+      }
+    ]);
+    const firstReviewStats = reviewStats[0] || { reviewsCount: 0, averageRating: 0 };
+
     const productCount = products.length;
     const promotionCount = products.filter((p) => isPromotionActive(p)).length;
     const topCategory = products.find((p) => p.category)?.category || 'Boutique partenaire';
@@ -134,8 +182,8 @@ class BoutiquePublicService {
       slogan: `Bienvenue chez ${boutique.name}`,
       activity: topCategory,
       description: 'Découvrez les offres disponibles dans cette boutique.',
-      rating: 0,
-      reviewsCount: 0,
+      rating: roundRating(firstReviewStats.averageRating),
+      reviewsCount: Number(firstReviewStats.reviewsCount || 0),
       logoUrl: boutique.logo || null,
       coverUrl,
       highlights: [
