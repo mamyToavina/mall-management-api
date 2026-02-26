@@ -2,8 +2,10 @@ const mongoose = require('mongoose');
 const Boutique = require('./boutique.model');
 const Product = require('../products/product.model');
 const BoutiqueReview = require('../reviews/review.model');
+const Box = require('../boxes/box.model');
 
 const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
+const roundRating = (value) => Math.round(Number(value || 0) * 10) / 10;
 
 const isPromotionActive = (product, now = new Date()) => {
   const promo = product?.promotion;
@@ -24,7 +26,39 @@ const computeSellingPrice = (product, now = new Date()) => {
   return roundMoney(product.price);
 };
 
-const roundRating = (value) => Math.round(Number(value || 0) * 10) / 10;
+const floorLabel = (floor) => {
+  if (Number(floor) === 0) return 'au rez-de-chaussee';
+  if (Number(floor) === 1) return 'au 1er etage';
+  if (!Number.isFinite(Number(floor)) || Number(floor) < 0) return 'dans TI Commercial';
+  return `au ${Math.trunc(Number(floor))}e etage`;
+};
+
+const buildLocationDescription = (boutiqueName, box) => {
+  if (!box) {
+    return `Bienvenue chez ${boutiqueName}, retrouvez-nous dans TI Commercial.`;
+  }
+  const number = box.number ? `box ${box.number}` : 'notre box';
+  return `Bienvenue chez ${boutiqueName}, retrouvez-nous ${number}, ${floorLabel(box.floor)} de TI Commercial.`;
+};
+
+const buildOfferingsText = (boutique, topCategory) => {
+  const raw = String(boutique?.offerings || '').trim();
+  if (raw) return raw;
+  if (topCategory) return `Nous proposons une selection de produits ${topCategory}.`;
+  return 'Nous proposons une selection de produits pour votre quotidien.';
+};
+
+const buildMarketingTagline = (boutique) => {
+  const raw = String(boutique?.marketingTagline || '').trim();
+  if (raw) return raw;
+  return 'Profitez de nos meilleures offres en boutique et en ligne.';
+};
+
+const buildPublicDescription = (boutique) => {
+  const raw = String(boutique?.publicDescription || '').trim();
+  if (raw) return raw;
+  return 'Decouvrez les offres disponibles dans cette boutique.';
+};
 
 class BoutiquePublicService {
   async listPublicBoutiques({ limit = 24, search = '' } = {}) {
@@ -37,6 +71,7 @@ class BoutiquePublicService {
 
     const boutiques = await Boutique.find(query).sort({ updatedAt: -1 }).limit(parsedLimit).lean();
     const boutiqueIds = boutiques.map((item) => item._id);
+    const boxIds = boutiques.map((item) => item.box).filter(Boolean);
 
     let statsByBoutique = new Map();
     if (boutiqueIds.length) {
@@ -97,6 +132,12 @@ class BoutiquePublicService {
       ])
     );
 
+    let boxById = new Map();
+    if (boxIds.length) {
+      const boxes = await Box.find({ _id: { $in: boxIds } }).select('_id number floor').lean();
+      boxById = new Map(boxes.map((box) => [String(box._id), box]));
+    }
+
     const data = boutiques.map((boutique) => {
       const stats = statsByBoutique.get(String(boutique._id)) || {
         productCount: 0,
@@ -108,13 +149,19 @@ class BoutiquePublicService {
         reviewsCount: 0,
         rating: 0
       };
+      const topCategory = stats.topCategory || '';
+      const activity = String(boutique.activity || '').trim() || topCategory || 'Boutique partenaire';
+      const box = boutique.box ? boxById.get(String(boutique.box)) || null : null;
 
       return {
         id: String(boutique._id),
         name: boutique.name,
         slogan: `Bienvenue chez ${boutique.name}`,
-        activity: stats.topCategory || 'Boutique partenaire',
-        description: 'Découvrez les offres disponibles dans cette boutique.',
+        activity,
+        offerings: buildOfferingsText(boutique, topCategory),
+        marketingTagline: buildMarketingTagline(boutique),
+        locationDescription: buildLocationDescription(boutique.name, box),
+        description: buildPublicDescription(boutique),
         rating: reviews.rating,
         reviewsCount: reviews.reviewsCount,
         logoUrl: boutique.logo || null,
@@ -146,42 +193,48 @@ class BoutiquePublicService {
 
     if (!boutique) return null;
 
-    const products = await Product.find({
-      boutique: boutique._id,
-      status: 'ACTIVE',
-      isPublished: true
-    })
-      .select('category images promotion price salePrice')
-      .lean();
-
-    const reviewStats = await BoutiqueReview.aggregate([
-      {
-        $match: {
-          boutique: boutique._id
+    const [products, reviewStats, box] = await Promise.all([
+      Product.find({
+        boutique: boutique._id,
+        status: 'ACTIVE',
+        isPublished: true
+      })
+        .select('category images promotion price salePrice')
+        .lean(),
+      BoutiqueReview.aggregate([
+        {
+          $match: {
+            boutique: boutique._id
+          }
+        },
+        {
+          $group: {
+            _id: '$boutique',
+            reviewsCount: { $sum: 1 },
+            averageRating: { $avg: '$rating' }
+          }
         }
-      },
-      {
-        $group: {
-          _id: '$boutique',
-          reviewsCount: { $sum: 1 },
-          averageRating: { $avg: '$rating' }
-        }
-      }
+      ]),
+      boutique.box ? Box.findById(boutique.box).select('_id number floor').lean() : Promise.resolve(null)
     ]);
-    const firstReviewStats = reviewStats[0] || { reviewsCount: 0, averageRating: 0 };
 
+    const firstReviewStats = reviewStats[0] || { reviewsCount: 0, averageRating: 0 };
     const productCount = products.length;
     const promotionCount = products.filter((p) => isPromotionActive(p)).length;
     const topCategory = products.find((p) => p.category)?.category || 'Boutique partenaire';
     const coverUrl =
       products.find((p) => Array.isArray(p.images) && p.images.length)?.images?.[0] || null;
+    const activity = String(boutique.activity || '').trim() || topCategory;
 
     return {
       id: String(boutique._id),
       name: boutique.name,
       slogan: `Bienvenue chez ${boutique.name}`,
-      activity: topCategory,
-      description: 'Découvrez les offres disponibles dans cette boutique.',
+      activity,
+      offerings: buildOfferingsText(boutique, topCategory),
+      marketingTagline: buildMarketingTagline(boutique),
+      locationDescription: buildLocationDescription(boutique.name, box),
+      description: buildPublicDescription(boutique),
       rating: roundRating(firstReviewStats.averageRating),
       reviewsCount: Number(firstReviewStats.reviewsCount || 0),
       logoUrl: boutique.logo || null,
