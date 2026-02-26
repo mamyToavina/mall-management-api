@@ -93,4 +93,11 @@ router.get(
   controller.listAdminTraces
 );
 
+router.get(
+  '/admin/boutiques-summary',
+  protect,
+  authorize('ADMIN'),
+  controller.listAdminBoutiqueSummary
+);
+
 module.exports = router;

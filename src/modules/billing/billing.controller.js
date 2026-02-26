@@ -90,6 +90,15 @@ class BillingController {
       next(error);
     }
   }
+
+  async listAdminBoutiqueSummary(req, res, next) {
+    try {
+      const result = await billingService.listAdminBoutiqueMonthlySummary(req.query);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new BillingController();
