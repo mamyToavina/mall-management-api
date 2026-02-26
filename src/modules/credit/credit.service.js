@@ -419,6 +419,48 @@ class CreditService {
       }
     };
   }
+
+  async getMyHistory({ userId, query = {}, actorId = null, actorRole = null, ip = null, userAgent = null }) {
+    await this.expireCreditsIfNeeded({ actorId, actorRole, ip, userAgent });
+
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(20, Math.max(1, Number(query.limit) || 5));
+    const skip = (page - 1) * limit;
+
+    const filters = {
+      usedBy: userId,
+      status: "used"
+    };
+
+    const [data, total] = await Promise.all([
+      Credit.find(filters)
+        .sort({ usedAt: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select("_id code value status usedAt createdAt updatedAt")
+        .lean(),
+      Credit.countDocuments(filters)
+    ]);
+
+    await this.logAudit({
+      action: "LIST",
+      actorId,
+      actorRole,
+      ip,
+      userAgent,
+      metadata: { scope: "my-history", page, limit, total }
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        pages: Math.max(1, Math.ceil(total / limit))
+      }
+    };
+  }
 }
 
 module.exports = new CreditService();

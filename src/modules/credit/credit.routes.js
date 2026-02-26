@@ -36,6 +36,12 @@ router.post(
 );
 
 router.get(
+  "/my-history",
+  authorize("USER", "ADMIN", "BOUTIQUE"),
+  creditController.myHistory
+);
+
+router.get(
   "/",
   authorize("ADMIN"),
   validateList,

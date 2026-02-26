@@ -96,6 +96,23 @@ class CreditController {
       sendError(res, error);
     }
   }
+
+  async myHistory(req, res) {
+    try {
+      const result = await creditService.getMyHistory({
+        userId: req.user.id,
+        query: req.query,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"] || null
+      });
+
+      res.json({ success: true, ...result });
+    } catch (error) {
+      sendError(res, error);
+    }
+  }
 }
 
 module.exports = new CreditController();
