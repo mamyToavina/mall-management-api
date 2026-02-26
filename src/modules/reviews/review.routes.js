@@ -2,12 +2,15 @@
 const { protect } = require('../../middlewares/auth.middleware');
 const { authorize } = require('../../middlewares/role.middleware');
 const {
+  listPublicReviewsByBoutique,
   upsertMyReview,
   listMyReviews,
   listReviewsByUserForAdmin
 } = require('./review.controller');
 
 const router = express.Router();
+
+router.get('/boutiques/:boutiqueId', listPublicReviewsByBoutique);
 
 router.use(protect, authorize('USER', 'ADMIN'));
 router.post('/boutiques/:boutiqueId', upsertMyReview);
