@@ -81,7 +81,7 @@ const contractSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-contractSchema.pre('save', function(next) {
+contractSchema.pre('save', function() {
   if (this.startDate && this.durationMonths && !this.endDate) {
     const computedEndDate = new Date(this.startDate);
     computedEndDate.setMonth(computedEndDate.getMonth() + this.durationMonths);
@@ -89,7 +89,7 @@ contractSchema.pre('save', function(next) {
   }
 
   if (this.endDate && this.startDate && this.endDate <= this.startDate) {
-    return next(new Error("End date must be after start date"));
+    throw new Error("End date must be after start date");
   }
 
   if (this.status === 'SCHEDULED' && this.endDate && this.endDate <= new Date()) {
@@ -104,10 +104,9 @@ contractSchema.pre('save', function(next) {
     this.status = 'EXPIRED';
   }
 
-  next();
 });
 
-contractSchema.pre('findOneAndUpdate', function(next) {
+contractSchema.pre('findOneAndUpdate', function() {
   const update = this.getUpdate() || {};
   const payload = update.$set || update;
   const hasStartDate = payload.startDate !== undefined;
@@ -131,7 +130,6 @@ contractSchema.pre('findOneAndUpdate', function(next) {
     }
   }
 
-  next();
 });
 
 contractSchema.methods.getPenaltyForLateMonths = function(lateMonths) {
@@ -145,11 +143,10 @@ contractSchema.methods.getPenaltyForLateMonths = function(lateMonths) {
   return base * Math.pow(factor, months - 1);
 };
 
-contractSchema.pre('validate', function(next) {
+contractSchema.pre('validate', function() {
   if (this.endDate && this.startDate && this.endDate <= this.startDate) {
-    return next(new Error("End date must be after start date"));
+    throw new Error("End date must be after start date");
   }
-  next();
 });
 
 module.exports = mongoose.model('Contract', contractSchema);
