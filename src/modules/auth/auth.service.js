@@ -145,18 +145,6 @@ const completeBoutiqueProfileService = async ({
     throw new Error('Boutique introuvable pour ce compte');
   }
 
-  user.password = password;
-  user.pseudo = pseudo;
-  user.firstName = firstName ?? user.firstName;
-  user.lastName = lastName ?? user.lastName;
-  user.gender = gender ?? user.gender;
-  user.status = 'ACTIVE';
-  user.isAccountCompleted = true;
-  user.activationTokenHash = null;
-  user.activationTokenExpires = null;
-  user.boutique = boutique._id;
-  await user.save();
-
   const parsedOnlineSalesEnabled = parseBoolean(onlineSalesEnabled);
   boutique.name = boutiqueName;
   const normalizedActivity = normalizeText(activity);
@@ -178,6 +166,18 @@ const completeBoutiqueProfileService = async ({
   }
   boutique.status = 'ACTIVE';
   await boutique.save();
+
+  user.password = password;
+  user.pseudo = pseudo;
+  user.firstName = firstName ?? user.firstName;
+  user.lastName = lastName ?? user.lastName;
+  user.gender = gender ?? user.gender;
+  user.status = 'ACTIVE';
+  user.isAccountCompleted = true;
+  user.activationTokenHash = null;
+  user.activationTokenExpires = null;
+  user.boutique = boutique._id;
+  await user.save();
 
   return {
     message: 'Compte boutique active et profil complete',

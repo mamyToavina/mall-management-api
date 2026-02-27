@@ -7,6 +7,14 @@ REST API for mall operations: authentication, tenant onboarding, box management,
 ```bash
 npm install
 npm run docs:generate
+
+## Seed demo data
+
+Ce script crée un jeu de données riche (admin, acheteur, boutique, produits, promotions, ventes, facturation, avis, événements).
+
+```bash
+npm run seed:demo
+```
 npm start
 ```
 
