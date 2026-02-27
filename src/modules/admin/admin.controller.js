@@ -13,7 +13,12 @@ const createTenant = async (req, res, next) => {
           ...(err.errors ? { errors: err.errors } : {})
         });
       }
-      next(err);
+      if (typeof next === 'function') {
+        return next(err);
+      }
+      return res.status(500).json({
+        message: err?.message || 'Erreur interne du serveur.'
+      });
     }
 };
   
