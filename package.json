@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "seed:demo": "node scripts/seed-demo-data.js",
     "docs:generate": "node scripts/generate-docs.js",
     "docs:watch": "node scripts/watch-docs.js",
     "prestart": "npm run docs:generate",

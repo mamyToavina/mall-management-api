@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
 const User = require('../users/user.model');
 const Boutique = require('../boutique/boutique.model');
 const Box = require('../boxes/box.model');
@@ -148,85 +147,93 @@ const createBoutiqueWithContract = async (data) => {
     throw buildHttpError(400, 'Donnees invalides.', inputErrors);
   }
 
-  const session = await mongoose.startSession();
   let response = null;
+  let activationEmailPayload = null;
 
-  try {
-    await session.withTransaction(async () => {
-      const box = await Box.findById(boxId).session(session);
-      if (!box) throw buildHttpError(404, 'Box introuvable');
-      if (box.boutique) throw buildHttpError(400, 'Box deja occupee');
+  const box = await Box.findById(boxId);
+  if (!box) throw buildHttpError(404, 'Box introuvable');
+  if (box.boutique) throw buildHttpError(400, 'Box deja occupee');
 
-      const existingUser = await User.findOne({ email: safeEmail }).session(session);
-      if (existingUser) {
-        throw buildHttpError(409, 'Donnees invalides.', [
-          { field: 'email', message: 'Cet email est deja utilise.' }
-        ]);
-      }
+  const existingUser = await User.findOne({ email: safeEmail });
+  if (existingUser) {
+    throw buildHttpError(409, 'Donnees invalides.', [
+      { field: 'email', message: 'Cet email est deja utilise.' }
+    ]);
+  }
 
-      const settings = await getGeneralSettings();
-      const contractDefaults = {
-        penaltyFee: settings.defaultPenaltyFee || 0,
-        penaltyGrowthFactor: settings.penaltyGrowthFactor || 1,
-        terminationFee: settings.defaultTerminationFee || 0,
-        onlineSalesCommissionPercent: settings.defaultOnlineSalesCommissionPercent || 0
-      };
-      const validatedContractData = validateContractData(contractData, contractDefaults, box.monthlyRent || 0);
+  const settings = await getGeneralSettings();
+  const contractDefaults = {
+    penaltyFee: settings.defaultPenaltyFee || 0,
+    penaltyGrowthFactor: settings.penaltyGrowthFactor || 1,
+    terminationFee: settings.defaultTerminationFee || 0,
+    onlineSalesCommissionPercent: settings.defaultOnlineSalesCommissionPercent || 0
+  };
+  const validatedContractData = validateContractData(contractData, contractDefaults, box.monthlyRent || 0);
 
-      const tempPassword = crypto.randomBytes(6).toString('hex');
-      const tempPseudo = `boutique_${Date.now()}`;
+  const tempPassword = crypto.randomBytes(6).toString('hex');
+  const tempPseudo = `boutique_${Date.now()}`;
 
-      const user = new User({
-        pseudo: tempPseudo,
-        firstName: safeFirstName,
-        lastName: safeLastName,
-        email: safeEmail,
-        password: tempPassword,
-        role: 'BOUTIQUE',
-        status: 'BLOCKED',
-        isAccountCompleted: false
-      });
-      await user.save({ session });
+  const user = new User({
+    pseudo: tempPseudo,
+    firstName: safeFirstName,
+    lastName: safeLastName,
+    email: safeEmail,
+    password: tempPassword,
+    role: 'BOUTIQUE',
+    status: 'BLOCKED',
+    isAccountCompleted: false
+  });
+  await user.save();
 
-      const boutique = new Boutique({
-        name: `${safeFirstName} ${safeLastName} Boutique`,
-        owner: user._id,
-        box: box._id
-      });
-      await boutique.save({ session });
+  const boutique = new Boutique({
+    name: `${safeFirstName} ${safeLastName} Boutique`,
+    owner: user._id,
+    box: box._id
+  });
+  await boutique.save();
 
-      box.boutique = boutique._id;
-      await box.save({ session });
+  box.boutique = boutique._id;
+  await box.save();
 
-      const contract = new Contract({
-        boutique: boutique._id,
-        ...validatedContractData,
-        status: 'ACTIVE'
-      });
-      await contract.save({ session });
+  const contract = new Contract({
+    boutique: boutique._id,
+    ...validatedContractData,
+    status: 'ACTIVE'
+  });
+  await contract.save();
 
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const hashedToken = await bcrypt.hash(rawToken, 10);
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = await bcrypt.hash(rawToken, 10);
 
-      user.activationTokenHash = hashedToken;
-      user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
-      user.boutique = boutique._id;
-      await user.save({ session });
+  user.activationTokenHash = hashedToken;
+  user.activationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+  user.boutique = boutique._id;
+  await user.save();
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
-      const activationLink = `${frontendUrl}/activate-account?token=${rawToken}&id=${user._id}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+  const activationLink = `${frontendUrl}/activate-account?token=${rawToken}&id=${user._id}`;
+  activationEmailPayload = {
+    to: user.email,
+    activationLink,
+    firstName: user.firstName
+  };
 
-      await sendActivationEmail(user.email, activationLink, user.firstName);
+  response = {
+    message: 'Utilisateur cree. Envoi de l email d activation en cours.',
+    userId: user._id,
+    activationLink,
+    activationToken: process.env.NODE_ENV === 'production' ? undefined : rawToken
+  };
 
-      response = {
-        message: 'Utilisateur cree et email envoye',
-        userId: user._id,
-        activationLink,
-        activationToken: process.env.NODE_ENV === 'production' ? undefined : rawToken
-      };
+  // Do not block API response on mail provider latency.
+  if (activationEmailPayload) {
+    sendActivationEmail(
+      activationEmailPayload.to,
+      activationEmailPayload.activationLink,
+      activationEmailPayload.firstName
+    ).catch((mailError) => {
+      console.error('[admin:createTenant] activation email failed', mailError?.message || mailError);
     });
-  } finally {
-    await session.endSession();
   }
 
   return response;
