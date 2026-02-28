@@ -61,7 +61,7 @@ class ProductService {
     };
   }
 
-  async listPublicPromotions({ limit = 12, boutiqueId } = {}) {
+  async listPublicPromotions({ limit = 12, boutiqueId, search, category, minPrice, maxPrice } = {}) {
     const parsedLimit = Math.min(Math.max(Number(limit) || 12, 1), 50);
 
     const query = {
@@ -73,16 +73,33 @@ class ProductService {
     if (boutiqueId) {
       query.boutique = boutiqueId;
     }
+    if (category && String(category).trim()) {
+      query.category = String(category).trim();
+    }
+    if (search && String(search).trim()) {
+      const term = String(search).trim();
+      query.$or = [
+        { name: { $regex: term, $options: 'i' } },
+        { category: { $regex: term, $options: 'i' } },
+        { description: { $regex: term, $options: 'i' } },
+        { sku: { $regex: term, $options: 'i' } }
+      ];
+    }
 
     const docs = await Product.find(query)
       .sort({ updatedAt: -1 })
       .limit(parsedLimit * 4)
       .populate({ path: 'boutique', select: 'name logo status' });
 
+    const minValue = Number.isFinite(Number(minPrice)) ? Number(minPrice) : null;
+    const maxValue = Number.isFinite(Number(maxPrice)) ? Number(maxPrice) : null;
+
     const items = [];
     for (const doc of docs) {
       const view = this.computePublicPromotionView(doc);
       if (!view) continue;
+      if (minValue !== null && Number(view.promoPrice) < minValue) continue;
+      if (maxValue !== null && Number(view.promoPrice) > maxValue) continue;
       items.push(view);
       if (items.length >= parsedLimit) break;
     }

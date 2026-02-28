@@ -5,6 +5,7 @@ const User = require("../users/user.model");
 const billingService = require("../billing/billing.service");
 const { generateCreditCode, hashIdempotencyKey } = require("./credit.util");
 const { VALID_VALUES } = require("./credit.validation");
+const { emitToRole, emitToUser } = require("../../socket");
 
 class CreditServiceError extends Error {
   constructor(message, status = 400, code = "CREDIT_ERROR") {
@@ -288,6 +289,11 @@ class CreditService {
       userAgent,
       metadata: { code: normalizedCode, replayed: !!responsePayload.replayed }
     });
+
+    if (responsePayload?.newBalance !== undefined) {
+      emitToUser(userId, "credit:updated", { credit: Number(responsePayload.newBalance || 0) });
+      emitToRole("ADMIN", "dashboard:admin:update", { source: "credit-recharge" });
+    }
 
     return responsePayload;
   }

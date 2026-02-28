@@ -1,9 +1,11 @@
 const dns = require('node:dns');
+const http = require('http');
 
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 const app = require('./app');
 const connectDB = require('./config/database.js');
+const { initSocket } = require('./socket');
 
 const PORT = process.env.PORT || 7878;
 
@@ -11,7 +13,10 @@ const PORT = process.env.PORT || 7878;
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+    initSocket(server);
+
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (err) {
