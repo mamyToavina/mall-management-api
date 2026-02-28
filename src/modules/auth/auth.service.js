@@ -1,8 +1,10 @@
 const User = require('../users/user.model');
 const Boutique = require('../boutique/boutique.model');
+const Contract = require('../contracts/contract.model');
 const { comparePassword } = require('../../utils/hash');
 const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const DEFAULT_MARKETING_TAGLINE = 'Profitez de nos meilleures offres en boutique et en ligne.';
 
 const loginService = async ({ email, password }) => {
@@ -102,82 +104,105 @@ const completeBoutiqueProfileService = async ({
   if (!resolvedUserId || !resolvedToken || !password || !pseudo || !boutiqueName) {
     throw new Error('userId, token, password, pseudo et boutiqueName sont obligatoires');
   }
-
-  const user = await User.findById(resolvedUserId);
-  if (!user) {
-    throw new Error('Compte introuvable');
+  if (String(password).length < 8) {
+    throw new Error('Mot de passe invalide: minimum 8 caracteres');
   }
-
-  if (user.role !== 'BOUTIQUE') {
-    throw new Error('Ce compte ne peut pas completer un profil boutique');
-  }
-
-  if (user.isAccountCompleted === true) {
-    throw new Error('Ce compte est deja active');
-  }
-
-  if (!user.activationTokenHash || !user.activationTokenExpires) {
-    throw new Error('Token d activation invalide');
-  }
-
-  if (new Date(user.activationTokenExpires).getTime() < Date.now()) {
-    throw new Error('Token d activation expire');
-  }
-
-  const isTokenValid = await bcrypt.compare(resolvedToken, user.activationTokenHash);
-  if (!isTokenValid) {
-    throw new Error('Token d activation invalide (verifiez le token et le userId du meme lien)');
-  }
-
-  const existingPseudo = await User.findOne({ pseudo, _id: { $ne: user._id } });
-  if (existingPseudo) {
-    throw new Error('Pseudo deja utilise');
-  }
-
+  const session = await mongoose.startSession();
+  let user = null;
   let boutique = null;
-  if (user.boutique) {
-    boutique = await Boutique.findById(user.boutique);
-  }
-  if (!boutique) {
-    boutique = await Boutique.findOne({ owner: user._id });
-  }
-  if (!boutique) {
-    throw new Error('Boutique introuvable pour ce compte');
-  }
+  let contract = null;
 
-  const parsedOnlineSalesEnabled = parseBoolean(onlineSalesEnabled);
-  boutique.name = boutiqueName;
-  const normalizedActivity = normalizeText(activity);
-  const normalizedOfferings = normalizeText(offerings);
-  const normalizedMarketingTagline = normalizeText(marketingTagline);
-  const normalizedPublicDescription = normalizeText(publicDescription);
+  try {
+    await session.withTransaction(async () => {
+      user = await User.findById(resolvedUserId).session(session);
+      if (!user) {
+        throw new Error('Compte introuvable');
+      }
 
-  if (normalizedActivity !== undefined) boutique.activity = normalizedActivity;
-  if (normalizedOfferings !== undefined) boutique.offerings = normalizedOfferings;
-  if (normalizedMarketingTagline !== undefined) {
-    boutique.marketingTagline = normalizedMarketingTagline || DEFAULT_MARKETING_TAGLINE;
-  }
-  if (normalizedPublicDescription !== undefined) boutique.publicDescription = normalizedPublicDescription;
-  if (parsedOnlineSalesEnabled !== undefined) {
-    boutique.onlineSalesEnabled = parsedOnlineSalesEnabled;
-  }
-  if (logo !== undefined) {
-    boutique.logo = logo;
-  }
-  boutique.status = 'ACTIVE';
-  await boutique.save();
+      if (user.role !== 'BOUTIQUE') {
+        throw new Error('Ce compte ne peut pas completer un profil boutique');
+      }
 
-  user.password = password;
-  user.pseudo = pseudo;
-  user.firstName = firstName ?? user.firstName;
-  user.lastName = lastName ?? user.lastName;
-  user.gender = gender ?? user.gender;
-  user.status = 'ACTIVE';
-  user.isAccountCompleted = true;
-  user.activationTokenHash = null;
-  user.activationTokenExpires = null;
-  user.boutique = boutique._id;
-  await user.save();
+      if (user.isAccountCompleted === true) {
+        throw new Error('Ce compte est deja active');
+      }
+
+      if (!user.activationTokenHash || !user.activationTokenExpires) {
+        throw new Error('Token d activation invalide');
+      }
+
+      if (new Date(user.activationTokenExpires).getTime() < Date.now()) {
+        throw new Error('Token d activation expire');
+      }
+
+      const isTokenValid = await bcrypt.compare(resolvedToken, user.activationTokenHash);
+      if (!isTokenValid) {
+        throw new Error('Token d activation invalide (verifiez le token et le userId du meme lien)');
+      }
+
+      const existingPseudo = await User.findOne({ pseudo, _id: { $ne: user._id } }).session(session);
+      if (existingPseudo) {
+        throw new Error('Pseudo deja utilise');
+      }
+
+      if (user.boutique) {
+        boutique = await Boutique.findById(user.boutique).session(session);
+      }
+      if (!boutique) {
+        boutique = await Boutique.findOne({ owner: user._id }).session(session);
+      }
+      if (!boutique) {
+        throw new Error('Boutique introuvable pour ce compte');
+      }
+      contract = await Contract.findOne({
+        boutique: boutique._id,
+        status: { $in: ['ACTIVE', 'SCHEDULED'] }
+      })
+        .sort({ createdAt: -1 })
+        .session(session);
+      if (!contract) {
+        throw new Error('Aucun contrat actif trouve pour cette boutique');
+      }
+
+      const parsedOnlineSalesEnabled = parseBoolean(onlineSalesEnabled);
+      boutique.name = boutiqueName;
+      const normalizedActivity = normalizeText(activity);
+      const normalizedOfferings = normalizeText(offerings);
+      const normalizedMarketingTagline = normalizeText(marketingTagline);
+      const normalizedPublicDescription = normalizeText(publicDescription);
+
+      if (normalizedActivity !== undefined) boutique.activity = normalizedActivity;
+      if (normalizedOfferings !== undefined) boutique.offerings = normalizedOfferings;
+      if (normalizedMarketingTagline !== undefined) {
+        boutique.marketingTagline = normalizedMarketingTagline || DEFAULT_MARKETING_TAGLINE;
+      }
+      if (normalizedPublicDescription !== undefined) boutique.publicDescription = normalizedPublicDescription;
+      if (parsedOnlineSalesEnabled !== undefined) {
+        boutique.onlineSalesEnabled = parsedOnlineSalesEnabled;
+      }
+      if (logo !== undefined) {
+        boutique.logo = logo;
+      }
+
+      user.password = password;
+      user.pseudo = pseudo;
+      user.firstName = firstName ?? user.firstName;
+      user.lastName = lastName ?? user.lastName;
+      user.gender = gender ?? user.gender;
+      user.boutique = boutique._id;
+
+      boutique.status = 'ACTIVE';
+      user.status = 'ACTIVE';
+      user.isAccountCompleted = true;
+      user.activationTokenHash = null;
+      user.activationTokenExpires = null;
+
+      await boutique.save({ session });
+      await user.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
 
   return {
     message: 'Compte boutique active et profil complete',

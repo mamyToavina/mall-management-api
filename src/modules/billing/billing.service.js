@@ -11,6 +11,7 @@ const ElectricityInvoice = require('./electricity-invoice.model');
 const BillingCycle = require('./billing-cycle.model');
 const BillingTrace = require('./billing-trace.model');
 const { extractInvoiceDataFromPdf } = require('../../utils/pdf-invoice-parser');
+const { emitToRole, emitToUser } = require('../../socket');
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -488,6 +489,10 @@ class BillingService {
     }
 
     const creditAfter = roundMoney(Number(ownerUser.credit) || 0);
+    if (creditAfter !== creditBefore) {
+      emitToUser(ownerUserId, 'credit:updated', { credit: creditAfter });
+      emitToRole('ADMIN', 'dashboard:admin:update', { source: 'auto-settle' });
+    }
     return {
       settledAmount: roundMoney(Math.max(0, creditBefore - creditAfter)),
       remainingCredit: creditAfter
@@ -739,6 +744,9 @@ class BillingService {
 
     await ownerUser.save();
     await cycle.save();
+
+    emitToUser(ownerUser._id, 'credit:updated', { credit: Number(ownerUser.credit || 0) });
+    emitToRole('ADMIN', 'dashboard:admin:update', { source: 'manual-payment' });
 
     const updatedSummary = await this.getMyBillingSummary(userId, { month, year });
     return {

@@ -8,6 +8,7 @@ const BoutiqueReview = require("../reviews/review.model");
 const Contract = require("../contracts/contract.model");
 const BillingTrace = require("../billing/billing-trace.model");
 const billingService = require("../billing/billing.service");
+const { emitToRole, emitToUser } = require("../../socket");
 
 const roundMoney = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
@@ -709,6 +710,9 @@ class SaleService {
 
     const session = await mongoose.startSession();
     let response = null;
+    const ownerIdsToNotify = new Set();
+    const boutiqueAccumulator = new Map();
+    let buyerIdToNotify = null;
 
     try {
       await session.withTransaction(async () => {
@@ -717,6 +721,7 @@ class SaleService {
         if (user.status !== "ACTIVE") {
           throw new SaleServiceError("Compte utilisateur inactif", 403, "USER_INACTIVE");
         }
+        buyerIdToNotify = user._id;
 
         if (idempotencyKeyHash) {
           const replay = await Sale.findOne({ buyer: userId, idempotencyKeyHash }).session(session);
@@ -747,7 +752,6 @@ class SaleService {
         let subtotal = 0;
         let taxTotal = 0;
         let quantityTotal = 0;
-        const boutiqueAccumulator = new Map();
 
         for (const item of normalizedItems) {
           const product = productsById.get(item.productId);
@@ -882,6 +886,7 @@ class SaleService {
             commissionRate,
             commissionAmount
           });
+          ownerIdsToNotify.add(entry.ownerId);
         }
 
         const grandTotal = roundMoney(subtotal + taxTotal);
@@ -1014,6 +1019,42 @@ class SaleService {
       await session.endSession();
     }
 
+    if (response && !response.replayed) {
+      const sale = response.sale;
+      const customerName =
+        [sale?.buyerSnapshot?.firstName, sale?.buyerSnapshot?.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        sale?.buyerSnapshot?.pseudo ||
+        sale?.buyerSnapshot?.email ||
+        "-";
+
+      for (const entry of boutiqueAccumulator.values()) {
+        if (!entry?.ownerId) continue;
+        emitToUser(entry.ownerId, "notification:order", {
+          id: `${sale._id}:${entry.boutique}`,
+          orderId: String(sale._id),
+          reference: sale.reference,
+          placedAt: sale.placedAt || sale.createdAt || new Date().toISOString(),
+          customerName,
+          boutiqueId: String(entry.boutique),
+          boutiqueName: entry.boutiqueName
+        });
+      }
+
+      for (const ownerId of ownerIdsToNotify) {
+        const owner = await User.findById(ownerId).select("credit");
+        emitToUser(ownerId, "credit:updated", { credit: Number(owner?.credit || 0) });
+        emitToUser(ownerId, "dashboard:boutique:update", { source: "sale" });
+      }
+      if (buyerIdToNotify) {
+        const buyer = await User.findById(buyerIdToNotify).select("credit");
+        emitToUser(buyerIdToNotify, "credit:updated", { credit: Number(buyer?.credit || 0) });
+      }
+      emitToRole("ADMIN", "dashboard:admin:update", { source: "sale" });
+    }
+
     return response;
   }
 
@@ -1096,6 +1137,8 @@ class SaleService {
     const boutique = await this.resolveBoutiqueForActor({ userId, role, boutiqueId });
     const session = await mongoose.startSession();
     let updated = null;
+    let refundSnapshot = null;
+    const ownerId = boutique.owner ? String(boutique.owner) : null;
 
     try {
       await session.withTransaction(async () => {
@@ -1174,7 +1217,6 @@ class SaleService {
               throw new SaleServiceError("Acheteur introuvable", 409, "BUYER_NOT_FOUND");
             }
 
-            const ownerId = boutique.owner ? String(boutique.owner) : null;
             if (!ownerId) {
               throw new SaleServiceError(
                 "Proprietaire boutique introuvable",
@@ -1191,6 +1233,13 @@ class SaleService {
             if (!seller) {
               throw new SaleServiceError("Vendeur introuvable", 409, "SELLER_NOT_FOUND");
             }
+
+            refundSnapshot = {
+              buyerId: String(buyer._id),
+              buyerCredit: Number(buyer.credit || 0),
+              sellerId: String(seller._id),
+              sellerCredit: Number(seller.credit || 0)
+            };
           }
 
           current.refundedAmount = refundAmount;
@@ -1207,6 +1256,16 @@ class SaleService {
       });
     } finally {
       await session.endSession();
+    }
+
+    if (ownerId) {
+      emitToUser(ownerId, "dashboard:boutique:update", { source: "order-status" });
+    }
+    emitToRole("ADMIN", "dashboard:admin:update", { source: "order-status" });
+
+    if (refundSnapshot) {
+      emitToUser(refundSnapshot.buyerId, "credit:updated", { credit: refundSnapshot.buyerCredit });
+      emitToUser(refundSnapshot.sellerId, "credit:updated", { credit: refundSnapshot.sellerCredit });
     }
 
     return updated;

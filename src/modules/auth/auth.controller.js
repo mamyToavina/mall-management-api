@@ -5,16 +5,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 
+const cookieOptionsForRequest = (req) => {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const origin = String(req.headers.origin || '');
+  const isHttps = req.secure || proto === 'https' || origin.startsWith('https://');
+
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  };
+};
+
 const login = async (req, res, next) => {
   try {
     const { accessToken, refreshToken, user } = await loginService(req.body)
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    })
+    res.cookie("refreshToken", refreshToken, cookieOptionsForRequest(req))
 
     res.json({
       accessToken,
@@ -35,7 +43,12 @@ const refresh = async (req, res, next) => {
       return res.status(401).json({ message: "Non autorisé" })
     }
 
-    const payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+    let payload = null;
+    try {
+      payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+    } catch (err) {
+      return res.status(401).json({ message: "Non autorisÃ©" })
+    }
     const user = await User.findById(payload.id)
 
     if (!user || !user.refreshTokenHash) {
@@ -50,7 +63,10 @@ const refresh = async (req, res, next) => {
 
     const newAccessToken = generateAccessToken(user)
 
-    res.json({ accessToken: newAccessToken })
+    const safeUser = user.toObject ? user.toObject() : { ...user };
+    delete safeUser.password;
+
+    res.json({ accessToken: newAccessToken, user: safeUser })
 
   } catch (err) {
     next(err)
@@ -63,7 +79,7 @@ const logout = async (req, res) => {
     refreshTokenHash: null
   })
 
-  res.clearCookie("refreshToken")
+  res.clearCookie("refreshToken", cookieOptionsForRequest(req))
 
   res.json({ message: "Déconnecté" })
 }
@@ -86,4 +102,8 @@ const completeBoutiqueProfile = async (req, res, next) => {
 };
 
 module.exports = { login, refresh, logout, completeBoutiqueProfile };
+
+
+
+
 
