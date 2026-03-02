@@ -579,10 +579,6 @@ class BillingService {
       now
     });
     await cycle.save();
-    await this.autoSettleOwnerOutstanding({
-      ownerUserId: ownerUser._id,
-      trigger: 'BILLING_REFRESH'
-    });
 
     const refreshedCycle = await BillingCycle.findOne({ boutique: boutique._id, month, year });
     if (!refreshedCycle) throw new Error('Cycle de facturation introuvable');
