@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Credit = require("./credit.model");
 const CreditAudit = require("./credit.audit.model");
 const User = require("../users/user.model");
-const billingService = require("../billing/billing.service");
 const { generateCreditCode, hashIdempotencyKey } = require("./credit.util");
 const { VALID_VALUES } = require("./credit.validation");
 const { emitToRole, emitToUser } = require("../../socket");
@@ -242,11 +241,8 @@ class CreditService {
         user.credit = (user.credit || 0) + credit.value;
         await user.save({ session });
 
-        await billingService.autoSettleOwnerOutstanding({
-          ownerUserId: user._id,
-          session,
-          trigger: "CREDIT_RECHARGE"
-        });
+        // A prepaid credit recharge should increase the visible wallet balance directly.
+        // Auto-settlement remains handled by billing refresh/sale inflows.
 
         const refreshedUser = await User.findById(userId).select("credit").session(session);
 
